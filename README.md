@@ -8,7 +8,7 @@ Live: https://restock-fi.vercel.app
 
 - Käyttäjä hakee tuotteen kerran, ja haku kohdistuu kaikkiin kauppoihin. Käyttäjä valitsee osumista saman tuotteen eri kaupoista, ja niistä tulee yksi seuranta.
 - Kirjautumista ei ole. Selain luo käyttäjäavaimen, ja linkillä `/?u=<avain>` saman listan saa auki toisella laitteella.
-- Taustatarkistus: GitHub Actions (`.github/workflows/check.yml`) kutsuu `/api/cron`-osoitetta 5 min välein. Kun tuote tulee saataville, ilmoitus lähtee [ntfy.sh](https://ntfy.sh):n kautta käyttäjän aiheeseen ja halutessa sähköpostiin.
+- Taustatarkistus: GitHub Actions (`.github/workflows/check.yml`) kutsuu `/api/cron`-osoitetta 30 min välein (yksityisen repon ilmaisminuutit riittävät tähän). Kun tuote tulee saataville, ilmoitus lähtee [ntfy.sh](https://ntfy.sh):n kautta käyttäjän aiheeseen ja halutessa sähköpostiin.
 - Kun sivu on auki, se tarkistaa saldot myös itse 2 min välein ja näyttää selainilmoituksen.
 
 | Tiedosto | Tehtävä |
