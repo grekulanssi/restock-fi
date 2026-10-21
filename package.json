@@ -1,1 +1,1 @@
-{"name":"restock-fi","private":true,"type":"module"}
+{"name":"restock-fi","private":true,"type":"module","dependencies":{"@vercel/blob":"^1.1.1"}}
