@@ -1,14 +1,15 @@
 import { STORES } from "../lib/stores.js";
+import { CATALOG } from "../lib/catalog.js";
 import { read, write } from "../lib/db.js";
 
-// GitHub Actions kutsuu tätä 5 min välein. Tarkistaa kaikkien käyttäjien seuratut tuotteet
-// ja lähettää ntfy-ilmoituksen (ja halutessa sähköpostin), kun tuote tulee saataville rajahinnan alle.
+// GitHub Actions kutsuu tätä ajastetusti. Tarkistaa katalogin ja käyttäjien seuraamat tuotteet,
+// kirjaa täydennykset historiaan ja lähettää ntfy-ilmoitukset (ja halutessa sähköpostin).
 export default async function handler(req, res) {
   if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).end();
 
-  const users = await read("users", {});
-  const state = await read("state", {});
+  const [users, state, events] = await Promise.all([read("users", {}), read("state", {}), read("events", [])]);
   const offers = new Map();
+  for (const p of CATALOG) for (const o of p.offers) offers.set(`${o.store}:${o.id}`, o);
   for (const u of Object.values(users)) for (const w of u.watches) for (const o of w.offers) offers.set(`${o.store}:${o.id}`, o);
 
   const checked = {};
@@ -33,18 +34,35 @@ export default async function handler(req, res) {
     }
   }
 
-  // Blobin ilmaiskiintiössä kirjoituksia on vähän, joten tallennetaan vain muutokset.
+  // Täydennyshistoria: loppu -> saatavilla avaa tapahtuman, saatavilla -> loppu sulkee sen.
+  const at = new Date().toISOString();
+  let eventsChanged = false;
+  for (const [key, now] of Object.entries(checked)) {
+    const old = state.offers?.[key];
+    if (now.error || !old) continue;
+    if (now.available && !old.available) {
+      events.push({ key, start: at, end: null, price: now.price });
+      eventsChanged = true;
+    } else if (!now.available && old.available) {
+      const open = events.findLast((e) => e.key === key && !e.end);
+      if (open) { open.end = at; eventsChanged = true; }
+    }
+  }
+  const cutoff = Date.now() - 90 * 864e5;
+  const keptEvents = events.filter((e) => Date.parse(e.start) > cutoff).slice(-1000);
+
+  // Blobin ilmaiskiintiössä kirjoituksia on vähän, joten tila tallennetaan vain, kun saatavuus tai hinta muuttuu.
   const before = JSON.stringify(state);
   for (const [k, v] of Object.entries(checked)) {
     if (v.error) continue;
     const old = state.offers?.[k];
-    if (!old || old.available !== v.available || old.price !== v.price || old.detail !== v.detail) {
-      (state.offers ||= {})[k] = { available: v.available, price: v.price, detail: v.detail, changedAt: new Date().toISOString() };
+    if (!old || old.available !== v.available || old.price !== v.price || old.image !== v.image) {
+      (state.offers ||= {})[k] = { name: v.name, url: v.url, image: v.image, available: v.available, price: v.price, detail: v.detail, changedAt: at };
     }
   }
   const changed = JSON.stringify(state) !== before;
-  if (changed) await write("state", state);
-  res.json({ checked: offers.size, sent, changed, errors: Object.entries(checked).filter(([, v]) => v.error) });
+  await Promise.all([changed && write("state", state), eventsChanged && write("events", keptEvents)]);
+  res.json({ checked: offers.size, sent, changed, eventsChanged, errors: Object.entries(checked).filter(([, v]) => v.error) });
 }
 
 function notify(user, title, message, click) {

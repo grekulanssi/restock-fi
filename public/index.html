@@ -4,45 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Restock.fi</title>
-<style>
-  :root { --bg:#f6f6f4; --card:#fff; --text:#1b1b1b; --muted:#6b6b6b; --line:#e3e3e0; --ok:#137a3a; --no:#a3262a; --accent:#1b1b1b; --sel:#eef4ff; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#141414; --card:#1e1e1e; --text:#eee; --muted:#9a9a9a; --line:#333; --ok:#4cc27a; --no:#ef6b6f; --accent:#eee; --sel:#1f2a3a; } }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui, -apple-system, sans-serif; }
-  main { max-width:760px; margin:0 auto; padding:32px 16px 64px; }
-  h1 { margin:0; font-size:28px; letter-spacing:-.02em; }
-  h2 { font-size:18px; margin:32px 0 10px; }
-  p.lead { margin:4px 0 24px; color:var(--muted); }
-  .box { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
-  form.search { display:flex; gap:8px; }
-  input, button { font:inherit; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); min-width:0; }
-  form.search input { flex:1; }
-  button { background:var(--accent); color:var(--bg); border:0; cursor:pointer; white-space:nowrap; }
-  button.ghost { background:none; color:var(--muted); border:1px solid var(--line); padding:6px 10px; font-size:14px; }
-  .muted { color:var(--muted); font-size:14px; }
-  .store { font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:14px 0 4px; }
-  label.hit { display:grid; grid-template-columns:20px 48px 1fr auto; gap:10px; align-items:center; padding:6px; border-radius:8px; cursor:pointer; }
-  label.hit:has(input:checked) { background:var(--sel); }
-  label.hit img, .offer img { width:48px; height:48px; object-fit:contain; background:#fff; border-radius:6px; }
-  .follow { display:grid; grid-template-columns:1fr 130px auto; gap:8px; margin-top:14px; }
-  @media (max-width:560px) { .follow { grid-template-columns:1fr; } }
-  .watch h3 { margin:0; font-size:17px; }
-  .offer { display:grid; grid-template-columns:48px 1fr auto; gap:10px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
-  .offer:first-of-type { border-top:0; }
-  .offer a { color:inherit; }
-  .ok { color:var(--ok); font-weight:600; } .no { color:var(--no); font-weight:600; }
-  .row { display:flex; justify-content:space-between; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
-  .settings { display:grid; gap:10px; }
-  .settings label { display:grid; gap:4px; font-size:14px; color:var(--muted); }
-  a { color:inherit; }
-  code { background:var(--bg); padding:2px 6px; border-radius:4px; word-break:break-all; }
-</style>
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <main>
   <h1>Restock.fi</h1>
-  <p class="lead">Seuraa samaa tuotetta usealla kaupalla. Saat ilmoituksen puhelimeen, kun se tulee varastoon tai hinta laskee. Kaupat: Verkkokauppa.com, Power ja Prisma.</p>
+  <p class="lead">Seuraa samaa tuotetta usealla kaupalla. Saat ilmoituksen puhelimeen, kun se tulee varastoon tai hinta laskee. Kaupat: Verkkokauppa.com, Power, Prisma ja Telia.</p>
 
+  <h2>Seuratuimmat tuotteet</h2>
+  <div class="grid" id="catalog"><p class="muted">Ladataan…</p></div>
+
+  <h2>Etsi muu tuote</h2>
   <div class="box">
     <form class="search" id="search">
       <input id="q" placeholder="Hae tuotetta (esim. playstation 5 pro) tai liitä tuotelinkki" required>
@@ -54,7 +26,7 @@
   <h2>Seuratut tuotteet</h2>
   <div id="watches"><p class="muted">Ei vielä seurattavia tuotteita.</p></div>
 
-  <h2>Ilmoitukset</h2>
+  <h2 id="ilmoitukset">Ilmoitukset</h2>
   <div class="box settings">
     <p class="muted" style="margin:0">Tuotteet tarkistetaan taustalla 30 minuutin välein, vaikka sivu olisi kiinni. Ilmoitus tulee ilmaisen <a href="https://ntfy.sh">ntfy</a>-sovelluksen kautta (<a href="https://apps.apple.com/app/ntfy/id1625396347">iPhone</a>, <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy">Android</a>). Asenna sovellus, paina +, ja tilaa alla oleva aihe.</p>
     <label>ntfy-aihe <input id="topic"></label>
@@ -64,18 +36,11 @@
   </div>
 </main>
 
-<script>
-const ls = {
-  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
-};
-const rand = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => (b % 36).toString(36)).join("");
+<script type="module">
+import { user, rand, loadData, saveData } from "/user.js";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const STORE_NAMES = { verkkokauppa: "Verkkokauppa.com", power: "Power", prisma: "Prisma" };
+const STORE_NAMES = { verkkokauppa: "Verkkokauppa.com", power: "Power", prisma: "Prisma", telia: "Telia" };
 
-const urlUser = new URLSearchParams(location.search).get("u");
-const user = urlUser || ls.get("user") || rand(24);
-ls.set("user", user);
 document.getElementById("mylink").textContent = `${location.origin}/?u=${user}`;
 
 let data = { topic: "", email: "", watches: [] };
@@ -83,8 +48,7 @@ let live = {};      // `${store}:${id}` -> viimeisin tarkistus
 let lastResults = [];
 
 async function load() {
-  data = await (await fetch(`/api/watches?user=${user}`)).json();
-  if (!data.topic) data.topic = "restock-" + rand(10);
+  data = await loadData();
   document.getElementById("topic").value = data.topic;
   document.getElementById("email").value = data.email || "";
   renderWatches();
@@ -94,8 +58,7 @@ async function load() {
 async function save() {
   data.topic = document.getElementById("topic").value.trim();
   data.email = document.getElementById("email").value.trim();
-  const r = await fetch("/api/watches", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user, ...data }) });
-  if (!r.ok) alert("Tallennus epäonnistui");
+  try { await saveData(data); } catch (e) { alert(e.message); }
 }
 
 // Haku
@@ -138,7 +101,7 @@ async function addWatch() {
   checkAll();
 }
 
-async function removeWatch(id) {
+window.removeWatch = async function (id) {
   data.watches = data.watches.filter((w) => w.id !== id);
   renderWatches();
   await save();
@@ -172,7 +135,7 @@ function renderWatches() {
   el.innerHTML = data.watches.map((w) => {
     const any = w.offers.some((o) => hit(w, live[`${o.store}:${o.id}`]));
     return `<div class="box watch">
-      <div class="row"><h3>${esc(w.name)}</h3><span class="${any ? "ok" : "no"}">${any ? "Saatavilla" : "Ei saatavilla"}</span></div>
+      <div class="row"><h3>${w.product ? `<a href="/tuote/${w.product}">${esc(w.name)}</a>` : esc(w.name)}</h3><span class="${any ? "ok" : "no"}">${any ? "Saatavilla" : "Ei saatavilla"}</span></div>
       <div class="muted">${w.maxPrice ? `Ilmoitus, kun hinta on enintään ${w.maxPrice} €` : "Ilmoitus heti, kun saatavilla"}</div>
       ${w.offers.map((o) => {
         const s = live[`${o.store}:${o.id}`];
@@ -193,6 +156,17 @@ document.getElementById("test").onclick = async () => {
   await fetch("https://ntfy.sh/", { method: "POST", body: JSON.stringify({ topic: document.getElementById("topic").value.trim(), title: "Restock.fi", message: "Testi-ilmoitus toimii." }) });
 };
 
+async function loadCatalog() {
+  const list = await (await fetch("/api/catalog")).json();
+  document.getElementById("catalog").innerHTML = list.map((p) => `<a class="tile" href="/tuote/${p.slug}">
+    <img src="${esc(p.image || "")}" alt="" loading="lazy">
+    <div><strong>${esc(p.name)}</strong>
+      <div class="muted"><span class="${p.available ? "ok" : "no"}">${p.available ? "Saatavilla" : "Loppu"}</span>${p.minPrice ? ` · alk. ${p.minPrice} €` : ""}</div>
+      <div class="muted">${p.lastRestock ? "Viimeksi varastossa " + new Date(p.lastRestock.start).toLocaleDateString("fi-FI") : p.stores.join(", ")}</div></div>
+  </a>`).join("");
+}
+
+loadCatalog();
 load();
 setInterval(checkAll, 2 * 60 * 1000);
 </script>
