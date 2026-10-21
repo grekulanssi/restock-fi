@@ -8,4 +8,5 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - run: curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://restock-fi.vercel.app/api/cron
+      - run: |
+          curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://restock-fi.vercel.app/api/cron
