@@ -9,4 +9,5 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - run: curl -sS --fail-with-body --max-time 320 -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://restock-fi.vercel.app/api/rematch
+      - run: |
+          curl -sS --fail-with-body --max-time 320 -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://restock-fi.vercel.app/api/rematch
