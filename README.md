@@ -25,7 +25,8 @@ Live: https://restock-fi.vercel.app
 | `api/watches.js` | Käyttäjän seurantojen ja push-tilausten luku ja tallennus |
 | `api/test-push.js` | Testi-ilmoitus käyttäjän kanaviin (sähköposti ja ntfy vain tallennetuista tiedoista) |
 | `api/cron.js` | Taustatarkistus, historia ja ilmoitukset. Tila kirjoitetaan vain, kun saatavuus, hinta tai kuva muuttuu (Blobin ilmaiskiintiö). |
-| `public/` | Etusivu, `style.css`, `user.js` (seurannat ja push-tilaus), `sw.js`, `manifest.json` ja kuvakkeet |
+| `public/` | Etusivu, `style.css`, `user.js` (seurannat ja push-tilaus), `sw.js` ja kuvakkeet |
+| `api/manifest.js` | Käyttäjäkohtainen manifest, jotta Koti-valikon sovellus avautuu omalla listalla (iOS:ssä eri tallennustila kuin Safarilla) |
 
 Blobin CDN voi palauttaa noin minuutin vanhaa dataa. Siksi `user.js` pitää seurannoista oman kopion selaimessa ja käyttää versiota, jonka `savedAt` on uudempi.
 

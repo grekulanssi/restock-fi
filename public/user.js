@@ -9,6 +9,7 @@ export const rand = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b
 const urlUser = new URLSearchParams(location.search).get("u");
 export const user = urlUser || ls.get("user") || rand(24);
 ls.set("user", user);
+document.querySelector('link[rel="manifest"]')?.setAttribute("href", `/api/manifest?u=${user}`);
 
 export async function loadData() {
   let local = null;

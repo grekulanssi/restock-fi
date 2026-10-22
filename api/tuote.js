@@ -43,7 +43,7 @@ export default async function handler(req, res) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(p.name)}: saatavuus ja täydennykset | Restock.fi</title>
 <meta name="description" content="${esc(lead)}">
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/api/manifest">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#141414">
 <link rel="stylesheet" href="/style.css">
