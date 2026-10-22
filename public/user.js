@@ -25,3 +25,28 @@ export async function saveData(data) {
   const r = await fetch("/api/watches", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user, ...data }) });
   if (!r.ok) throw new Error("Tallennus epäonnistui");
 }
+
+// Web Push. iPhonessa toimii vain, kun sivu on lisätty Koti-valikkoon (iOS 16.4+).
+const VAPID_PUBLIC_KEY = "BJwmDtH9Ab4NIwNBLRzIrRRfRaffG_xSwjCySBohbd1N6bhYrxWMsPxK23nUMoKYFVTQIYqvGhTeOYB3VUYFtK0";
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+
+export function pushState(data) {
+  if (isIOS && !standalone) return "ios-install";
+  if (!("PushManager" in window) || !("Notification" in window)) return "unsupported";
+  if (Notification.permission === "denied") return "denied";
+  const mine = ls.get("pushEndpoint");
+  return Notification.permission === "granted" && mine && (data.push || []).some((p) => p.endpoint === mine) ? "on" : "off";
+}
+
+export async function enablePush(data) {
+  if (await Notification.requestPermission() !== "granted") throw new Error("Ilmoituksille ei annettu lupaa.");
+  const reg = await navigator.serviceWorker.ready;
+  const key = Uint8Array.from(atob(VAPID_PUBLIC_KEY.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+  const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }));
+  const json = sub.toJSON();
+  data.push = [...(data.push || []).filter((p) => p.endpoint !== json.endpoint), { endpoint: json.endpoint, keys: json.keys }].slice(-5);
+  ls.set("pushEndpoint", json.endpoint);
+}

@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Restock.fi</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#141414">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -28,16 +31,20 @@
 
   <h2 id="ilmoitukset">Ilmoitukset</h2>
   <div class="box settings">
-    <p class="muted" style="margin:0">Tuotteet tarkistetaan taustalla 30 minuutin välein, vaikka sivu olisi kiinni. Ilmoitus tulee ilmaisen <a href="https://ntfy.sh">ntfy</a>-sovelluksen kautta (<a href="https://apps.apple.com/app/ntfy/id1625396347">iPhone</a>, <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy">Android</a>). Asenna sovellus, paina +, ja tilaa alla oleva aihe.</p>
-    <label>ntfy-aihe <input id="topic"></label>
+    <p class="muted" style="margin:0">Tuotteet tarkistetaan taustalla 30 minuutin välein, vaikka sivu olisi kiinni. Ilmoitus tulee suoraan puhelimeen tai tietokoneelle.</p>
+    <div id="pushhelp" class="muted" hidden><strong>iPhone:</strong> ilmoitukset toimivat, kun sivu on lisätty Koti-valikkoon. Paina Safarissa Jaa-painiketta (neliö ja nuoli), valitse <em>Lisää Koti-valikkoon</em>, avaa Restock Koti-valikosta ja paina sitten alla olevaa nappia.</div>
+    <div class="row" style="margin:0"><span id="pushstatus" class="muted"></span><span><button class="ghost" id="test">Testi-ilmoitus</button> <button id="enablepush">Ota ilmoitukset käyttöön</button></span></div>
     <label>Sähköposti (valinnainen, ilmoitus myös sähköpostiin) <input id="email" type="email" placeholder="nimi@example.com"></label>
-    <div class="row"><button class="ghost" id="test">Lähetä testi-ilmoitus</button><button id="save">Tallenna</button></div>
-    <p class="muted" style="margin:0">Kun sivu on auki, ilmoitus tulee myös selaimeen. Sama lista toisella laitteella: <code id="mylink"></code></p>
+    <details><summary class="muted">Vaihtoehto: ntfy-sovellus</summary>
+      <label style="margin-top:8px">ntfy-aihe (tilaa sama aihe <a href="https://ntfy.sh">ntfy</a>-sovelluksessa) <input id="topic"></label>
+    </details>
+    <div class="row" style="margin:0"><span></span><button class="ghost" id="save">Tallenna</button></div>
+    <p class="muted" style="margin:0">Sama lista toisella laitteella: <code id="mylink"></code></p>
   </div>
 </main>
 
 <script type="module">
-import { user, rand, loadData, saveData } from "/user.js";
+import { user, rand, loadData, saveData, enablePush, pushState } from "/user.js";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const STORE_NAMES = { verkkokauppa: "Verkkokauppa.com", power: "Power", prisma: "Prisma", telia: "Telia" };
 
@@ -52,6 +59,7 @@ async function load() {
   document.getElementById("topic").value = data.topic;
   document.getElementById("email").value = data.email || "";
   renderWatches();
+  pushStatus();
   checkAll();
 }
 
@@ -153,7 +161,23 @@ function renderWatches() {
 document.getElementById("save").onclick = async () => { await save(); alert("Tallennettu"); };
 document.getElementById("test").onclick = async () => {
   await save();
-  await fetch("https://ntfy.sh/", { method: "POST", body: JSON.stringify({ topic: document.getElementById("topic").value.trim(), title: "Restock.fi", message: "Testi-ilmoitus toimii." }) });
+  const r = await (await fetch("/api/test-push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user, push: data.push }) })).json();
+  alert(r.sent ? `Testi-ilmoitus lähetetty (${r.sent} kanavaa).` : "Ilmoituskanavia ei ole vielä. Ota ilmoitukset käyttöön tai lisää ntfy-aihe.");
+};
+
+function pushStatus() {
+  const s = pushState(data);
+  document.getElementById("pushhelp").hidden = s !== "ios-install";
+  document.getElementById("enablepush").hidden = s === "on" || s === "unsupported";
+  document.getElementById("pushstatus").textContent = {
+    on: "Ilmoitukset ovat päällä tällä laitteella.", off: "Ilmoitukset eivät ole päällä tällä laitteella.",
+    "ios-install": "Lisää ensin sivu Koti-valikkoon.", denied: "Ilmoitukset on estetty selaimen asetuksista.",
+    unsupported: "Tämä selain ei tue ilmoituksia. Käytä sähköpostia tai ntfy:tä.",
+  }[s];
+}
+document.getElementById("enablepush").onclick = async () => {
+  try { await enablePush(data); await save(); } catch (e) { alert(e.message); }
+  pushStatus();
 };
 
 async function loadCatalog() {

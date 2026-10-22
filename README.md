@@ -9,7 +9,8 @@ Live: https://restock-fi.vercel.app
 - **Katalogi** (`lib/catalog.js`): kuratoidut tuotteet, joilla on julkinen sivu `/tuote/<slug>`. Sivulla näkyvät hinnat ja tila kaupoittain, täydennykset 30 päivältä, viimeiset täydennykset kestoineen ja seuraajamäärä. Lisäksi on Seuraa-nappi. Sama tuote yhdistetään kauppoihin käsin, ja värivaihtoehdoista seurataan yhtä.
 - **Oma haku**: katalogin ulkopuoliset tuotteet haetaan kerralla kaikista kaupoista, joissa on haku. Käyttäjä valitsee osumista saman tuotteen.
 - Kirjautumista ei ole. Selain luo käyttäjäavaimen, ja linkillä `/?u=<avain>` saman listan saa auki toisella laitteella.
-- **Taustatarkistus**: GitHub Actions (`.github/workflows/check.yml`, yksityinen repo) kutsuu `/api/cron`-osoitetta 30 min välein. Cron tarkistaa katalogin ja kaikkien seuraamat tuotteet, kirjaa täydennykset (loppu → saatavilla → loppu) ja lähettää ilmoituksen [ntfy.sh](https://ntfy.sh):n kautta käyttäjän aiheeseen ja halutessa sähköpostiin.
+- **Taustatarkistus**: GitHub Actions (`.github/workflows/check.yml`, yksityinen repo) kutsuu `/api/cron`-osoitetta 30 min välein. Cron tarkistaa katalogin ja kaikkien seuraamat tuotteet, kirjaa täydennykset (loppu → saatavilla → loppu) ja lähettää ilmoitukset.
+- **Ilmoitukset** (`lib/notify.js`): ensisijaisesti Web Push (`public/sw.js`, VAPID-avaimet). iPhonessa push toimii vain, kun sivu on lisätty Koti-valikkoon (iOS 16.4+), ja sivu neuvoo tämän. Vaihtoehtoina [ntfy.sh](https://ntfy.sh)-aihe ja sähköposti (ntfy:n kautta). ntfy:n iOS-sovellus näyttää viestit viiveellä tai vasta avattaessa, joten sitä ei suositella iPhonelle.
 - Kun sivu on auki, se tarkistaa saldot myös itse 2 min välein ja näyttää selainilmoituksen.
 
 | Tiedosto | Tehtävä |
@@ -21,9 +22,10 @@ Live: https://restock-fi.vercel.app
 | `api/tuote.js` | Palvelimella renderöity tuotesivu (`/tuote/:slug`, rewrite `vercel.json`:ssa) |
 | `api/catalog.js` | Etusivun tuotelista |
 | `api/search.js`, `api/check.js` | Haku kaikista kaupoista ja yhden tuotteen tarkistus |
-| `api/watches.js` | Käyttäjän seurantojen luku ja tallennus |
+| `api/watches.js` | Käyttäjän seurantojen ja push-tilausten luku ja tallennus |
+| `api/test-push.js` | Testi-ilmoitus käyttäjän kanaviin (sähköposti ja ntfy vain tallennetuista tiedoista) |
 | `api/cron.js` | Taustatarkistus, historia ja ilmoitukset. Tila kirjoitetaan vain, kun saatavuus, hinta tai kuva muuttuu (Blobin ilmaiskiintiö). |
-| `public/` | Etusivu, yhteinen `style.css` ja `user.js` |
+| `public/` | Etusivu, `style.css`, `user.js` (seurannat ja push-tilaus), `sw.js`, `manifest.json` ja kuvakkeet |
 
 Blobin CDN voi palauttaa noin minuutin vanhaa dataa. Siksi `user.js` pitää seurannoista oman kopion selaimessa ja käyttää versiota, jonka `savedAt` on uudempi.
 
@@ -36,6 +38,7 @@ Hae tuotenumerot (`/api/search?q=...`, Telialle variantti-id tuotesivun lähdeko
 - `BLOB_READ_WRITE_TOKEN` – Vercel Blob (store `restock-fi`)
 - `DATA_KEY` – satunnainen polkuosa, ettei julkisen storen tiedostoja voi arvata
 - `CRON_SECRET` – sama arvo myös GitHubin repo-secretinä `CRON_SECRET`
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` – Web Push. Julkinen avain on myös `public/user.js`:ssä.
 
 ## Ajo ja julkaisu
 

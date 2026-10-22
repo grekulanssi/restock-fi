@@ -1,6 +1,7 @@
 import { STORES } from "../lib/stores.js";
 import { CATALOG } from "../lib/catalog.js";
 import { read, write } from "../lib/db.js";
+import { notify, hasChannel } from "../lib/notify.js";
 
 // GitHub Actions kutsuu tätä ajastetusti. Tarkistaa katalogin ja käyttäjien seuraamat tuotteet,
 // kirjaa täydennykset historiaan ja lähettää ntfy-ilmoitukset (ja halutessa sähköpostin).
@@ -25,7 +26,7 @@ export default async function handler(req, res) {
         if (!now || now.error) continue;
         const hit = now.available && (!w.maxPrice || now.price <= w.maxPrice);
         const hitKey = `${key}:${w.maxPrice || ""}`;
-        if (hit && !state.hits?.[hitKey] && u.topic) {
+        if (hit && !state.hits?.[hitKey] && hasChannel(u)) {
           await notify(u, `${now.name} saatavilla: ${STORES[o.store].name}`, `${now.price} € · ${now.detail}`, now.url);
           sent.push(hitKey);
         }
@@ -63,11 +64,4 @@ export default async function handler(req, res) {
   const changed = JSON.stringify(state) !== before;
   await Promise.all([changed && write("state", state), eventsChanged && write("events", keptEvents)]);
   res.json({ checked: offers.size, sent, changed, eventsChanged, errors: Object.entries(checked).filter(([, v]) => v.error) });
-}
-
-function notify(user, title, message, click) {
-  return fetch("https://ntfy.sh/", {
-    method: "POST",
-    body: JSON.stringify({ topic: user.topic, title, message, click, tags: ["shopping_cart"], ...(user.email && { email: user.email }) }),
-  }).catch(() => {});
 }
