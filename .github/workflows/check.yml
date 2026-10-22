@@ -1,12 +1,22 @@
 name: Tarkista saldot
+# GitHub ajaa ajastetut työt usein tuntien viiveellä, joten yksi ajo pysyy käynnissä
+# lähes 6 tuntia (GitHubin raja) ja tarkistaa 2 min välein. Seuraava ajo odottaa jonossa.
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
+concurrency:
+  group: check
+  cancel-in-progress: false
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 355
     steps:
       - run: |
-          curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://restock-fi.vercel.app/api/cron
+          end=$((SECONDS + 350*60))
+          while [ $SECONDS -lt $end ]; do
+            curl -sS --max-time 60 -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://restock-fi.vercel.app/api/cron || true
+            echo
+            sleep 120
+          done

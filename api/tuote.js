@@ -89,7 +89,7 @@ export default async function handler(req, res) {
     <div class="bars">${days.map((n) => `<span class="${n ? "" : "zero"}" style="height:${(n / maxDay) * 100}%" title="${n}"></span>`).join("")}</div>
     <div class="axis"><span>30 pv sitten</span><span>tänään</span></div>
     ${s.history.length ? `<ul class="events">${s.history.slice(-10).reverse().map((e) => `<li><strong>${esc(e.storeName)}</strong> · ${fmtDate(e.start)} · ${eur(e.price)} · ${duration(e)}</li>`).join("")}</ul>`
-      : `<p class="muted">Historia kertyy, kun tuote tulee seuraavan kerran varastoon. Tarkistus tehdään 5 minuutin välein.</p>`}
+      : `<p class="muted">Historia kertyy, kun tuote tulee seuraavan kerran varastoon. Tarkistus tehdään 2 minuutin välein.</p>`}
   </div>
 </main>
 <script type="module">
