@@ -10,7 +10,7 @@ Live: https://restock-fi.vercel.app
 - **Oma haku**: katalogin ulkopuoliset tuotteet haetaan kerralla kaikista kaupoista, joissa on haku. Käyttäjä valitsee osumista saman tuotteen.
 - Kirjautumista ei ole. Selain luo käyttäjäavaimen, ja linkillä `/?u=<avain>` saman listan saa auki toisella laitteella.
 - **Taustatarkistus**: GitHub Actions (`.github/workflows/check.yml`, julkinen repo, joten minuutit ovat ilmaisia) kutsuu `/api/cron`-osoitetta 2 min välein. GitHub ajaa ajastetut työt usein tuntien viiveellä, joten yksi ajo pysyy käynnissä lähes 6 h ja silmukoi, ja seuraava odottaa jonossa. Cron tarkistaa katalogin ja kaikkien seuraamat tuotteet, kirjaa täydennykset (loppu → saatavilla → loppu) ja lähettää ilmoitukset.
-- **Ilmoitukset** (`lib/notify.js`): ensisijaisesti Web Push (`public/sw.js`, VAPID-avaimet). iPhonessa push toimii vain, kun sivu on lisätty Koti-valikkoon (iOS 16.4+), ja sivu neuvoo tämän. Vaihtoehtoina [ntfy.sh](https://ntfy.sh)-aihe ja sähköposti (ntfy:n kautta). ntfy:n iOS-sovellus näyttää viestit viiveellä tai vasta avattaessa, joten sitä ei suositella iPhonelle.
+- **Ilmoitukset** (`lib/notify.js`): ensisijaisesti Web Push (`public/sw.js`, VAPID-avaimet). iPhonessa push toimii vain, kun sivu on lisätty Koti-valikkoon (iOS 16.4+), ja sivu neuvoo tämän. Lisäksi halutessa sähköposti, joka välitetään [ntfy.sh](https://ntfy.sh):n kautta. ntfy-sovelluksesta luovuttiin, koska iOS-versio näytti viestit viiveellä.
 - **Säde** (`lib/geo.js`): käyttäjä antaa postinumeron tai paikkakunnan ja säteen. Ilmoitus tulee, kun tuotetta on verkkokaupassa tai säteen sisällä olevassa myymälässä. Myymälän sijainti haetaan postinumerosta tai paikkakunnasta (`lib/postcodes.json`, GeoNames FI, CC-BY 4.0). Tuntemattoman sijainnin myymälä lasketaan mukaan, jotta ilmoitus ei jää tulematta.
 - Kun sivu on auki, se tarkistaa saldot myös itse 2 min välein ja näyttää selainilmoituksen.
 
@@ -25,7 +25,7 @@ Live: https://restock-fi.vercel.app
 | `api/catalog.js` | Etusivun tuotelista |
 | `api/search.js`, `api/check.js` | Haku kaikista kaupoista ja yhden tuotteen tarkistus |
 | `api/watches.js` | Käyttäjän seurantojen ja push-tilausten luku ja tallennus |
-| `api/test-push.js` | Testi-ilmoitus käyttäjän kanaviin (sähköposti ja ntfy vain tallennetuista tiedoista) |
+| `api/test-push.js` | Testi-ilmoitus käyttäjän kanaviin (sähköposti vain tallennetuista tiedoista) |
 | `api/cron.js` | Taustatarkistus, historia ja ilmoitukset. Tila kirjoitetaan vain, kun saatavuus, hinta tai kuva muuttuu (Blobin ilmaiskiintiö). |
 | `public/` | Etusivu, `style.css`, `user.js` (seurannat ja push-tilaus), `sw.js` ja kuvakkeet |
 | `api/manifest.js` | Käyttäjäkohtainen manifest, jotta Koti-valikon sovellus avautuu omalla listalla (iOS:ssä eri tallennustila kuin Safarilla) |

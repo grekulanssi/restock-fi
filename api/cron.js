@@ -5,7 +5,7 @@ import { notify, hasChannel } from "../lib/notify.js";
 import { hitsFor } from "../lib/geo.js";
 
 // GitHub Actions kutsuu tätä ajastetusti. Tarkistaa katalogin ja käyttäjien seuraamat tuotteet,
-// kirjaa täydennykset historiaan ja lähettää ntfy-ilmoitukset (ja halutessa sähköpostin).
+// kirjaa täydennykset historiaan ja lähettää ilmoitukset (Web Push ja halutessa sähköposti).
 export default async function handler(req, res) {
   if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).end();
 

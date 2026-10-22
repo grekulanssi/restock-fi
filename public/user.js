@@ -16,7 +16,6 @@ export async function loadData() {
   try { local = JSON.parse(ls.get("data:" + user)); } catch {}
   const server = await (await fetch(`/api/watches?user=${user}`)).json();
   const data = (local?.savedAt || 0) > (server.savedAt || 0) ? local : server;
-  if (!data.topic) data.topic = "restock-" + rand(10);
   return data;
 }
 

@@ -40,9 +40,6 @@
     </div>
     <p class="muted" style="margin:0">Jos sijainti ja säde on annettu, ilmoitus tulee vain, kun tuotetta on verkkokaupassa tai myymälässä säteen sisällä.</p>
     <label>Sähköposti (valinnainen, ilmoitus myös sähköpostiin) <input id="email" type="email" placeholder="nimi@example.com"></label>
-    <details><summary class="muted">Vaihtoehto: ntfy-sovellus</summary>
-      <label style="margin-top:8px">ntfy-aihe (tilaa sama aihe <a href="https://ntfy.sh">ntfy</a>-sovelluksessa) <input id="topic"></label>
-    </details>
     <div class="row" style="margin:0"><span></span><button class="ghost" id="save">Tallenna</button></div>
     <p class="muted" style="margin:0">Sama lista toisella laitteella: <code id="mylink"></code></p>
   </div>
@@ -55,13 +52,12 @@ const STORE_NAMES = { verkkokauppa: "Verkkokauppa.com", power: "Power", prisma: 
 
 document.getElementById("mylink").textContent = `${location.origin}/?u=${user}`;
 
-let data = { topic: "", email: "", watches: [] };
+let data = { email: "", watches: [] };
 let live = {};      // `${store}:${id}` -> viimeisin tarkistus
 let lastResults = [];
 
 async function load() {
   data = await loadData();
-  document.getElementById("topic").value = data.topic;
   document.getElementById("email").value = data.email || "";
   document.getElementById("location").value = data.location || "";
   document.getElementById("radius").value = data.radiusKm || "";
@@ -71,7 +67,6 @@ async function load() {
 }
 
 async function save() {
-  data.topic = document.getElementById("topic").value.trim();
   data.email = document.getElementById("email").value.trim();
   data.location = document.getElementById("location").value.trim();
   data.radiusKm = Number(document.getElementById("radius").value) || null;
@@ -172,7 +167,7 @@ document.getElementById("save").onclick = async () => { await save(); alert("Tal
 document.getElementById("test").onclick = async () => {
   await save();
   const r = await (await fetch("/api/test-push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user, push: data.push }) })).json();
-  alert(r.sent ? `Testi-ilmoitus lähetetty (${r.sent} kanavaa).` : "Ilmoituskanavia ei ole vielä. Ota ilmoitukset käyttöön tai lisää ntfy-aihe.");
+  alert(r.sent ? `Testi-ilmoitus lähetetty (${r.sent} kanavaa).` : "Ilmoitukset eivät ole vielä päällä. Paina Ota ilmoitukset käyttöön.");
 };
 
 function pushStatus() {
@@ -182,7 +177,7 @@ function pushStatus() {
   document.getElementById("pushstatus").textContent = {
     on: "Ilmoitukset ovat päällä tällä laitteella.", off: "Ilmoitukset eivät ole päällä tällä laitteella.",
     "ios-install": "Lisää ensin sivu Koti-valikkoon.", denied: "Ilmoitukset on estetty selaimen asetuksista.",
-    unsupported: "Tämä selain ei tue ilmoituksia. Käytä sähköpostia tai ntfy:tä.",
+    unsupported: "Tämä selain ei tue ilmoituksia. Käytä sähköpostia.",
   }[s];
 }
 document.getElementById("enablepush").onclick = async () => {
