@@ -12,7 +12,7 @@
 <body>
 <main>
   <h1>Restock.fi</h1>
-  <p class="lead">Seuraa samaa tuotetta usealla kaupalla. Saat ilmoituksen puhelimeen, kun se tulee varastoon tai hinta laskee. Kaupat: Verkkokauppa.com, Power, Prisma, Telia, Elisa, DNA, C&C, Kärkkäinen ja Veikon Kone, myös myymäläkohtaisesti.</p>
+  <p class="lead">Seuraa samaa tuotetta usealla kaupalla. Saat ilmoituksen puhelimeen, kun se tulee varastoon tai hinta laskee. Kaupat: Verkkokauppa.com, Power, Prisma, Telia, Elisa, DNA, C&C, Kärkkäinen, Veikon Kone ja Multitronic, myös myymäläkohtaisesti.</p>
 
   <h2>Seuratuimmat tuotteet</h2>
   <div class="grid" id="catalog"><p class="muted">Ladataan…</p></div>
@@ -51,7 +51,7 @@
 <script type="module">
 import { user, rand, loadData, saveData, enablePush, pushState } from "/user.js";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const STORE_NAMES = { verkkokauppa: "Verkkokauppa.com", power: "Power", prisma: "Prisma", telia: "Telia", elisa: "Elisa", dna: "DNA", cec: "C&C", karkkainen: "Kärkkäinen", veikonkone: "Veikon Kone" };
+const STORE_NAMES = { verkkokauppa: "Verkkokauppa.com", power: "Power", prisma: "Prisma", telia: "Telia", elisa: "Elisa", dna: "DNA", cec: "C&C", karkkainen: "Kärkkäinen", veikonkone: "Veikon Kone", multitronic: "Multitronic" };
 
 document.getElementById("mylink").textContent = `${location.origin}/?u=${user}`;
 

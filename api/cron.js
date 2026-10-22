@@ -10,6 +10,7 @@ export default async function handler(req, res) {
   if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).end();
 
   const [users, state, events] = await Promise.all([read("users", {}), read("state", {}), read("events", [])]);
+  const before = JSON.stringify(state);
   const offers = new Map();
   for (const p of CATALOG) for (const o of p.offers) offers.set(`${o.store}:${o.id}`, o);
   // Katalogituotteen seuranta käyttää aina katalogin nykyistä kauppalistaa, jotta uudet kaupat tulevat mukaan.
@@ -57,8 +58,8 @@ export default async function handler(req, res) {
   const cutoff = Date.now() - 90 * 864e5;
   const keptEvents = events.filter((e) => Date.parse(e.start) > cutoff).slice(-1000);
 
-  // Blobin ilmaiskiintiössä kirjoituksia on vähän, joten tila tallennetaan vain, kun saatavuus tai hinta muuttuu.
-  const before = JSON.stringify(state);
+  // Blobin ilmaiskiintiössä kirjoituksia on vähän, joten tila tallennetaan vain, kun saatavuus, hinta tai ilmoitustila muuttuu.
+  // (before otetaan heti luvun jälkeen, jotta myös lähetetyt ilmoitukset tallentuvat eikä niitä lähetetä uudelleen.)
   for (const [k, v] of Object.entries(checked)) {
     if (v.error) continue;
     const old = state.offers?.[k];

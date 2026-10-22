@@ -1,6 +1,6 @@
 # Restock.fi (MVP)
 
-Tech-tuotteiden varastovahti. Seuraa samaa tuotetta usealla kaupalla, kirjaa täydennyshistorian ja ilmoittaa puhelimeen, kun tuote tulee saataville (valinnaisesti alle rajahinnan). Kaupat: Verkkokauppa.com, Power, Prisma (kaikki S-ryhmän myymälät), Telia, Elisa, DNA ja C&C, myös myymäläkohtaisesti. Ilmoitukset voi rajata postinumeron tai paikkakunnan ja säteen mukaan.
+Tech-tuotteiden varastovahti. Seuraa samaa tuotetta usealla kaupalla, kirjaa täydennyshistorian ja ilmoittaa puhelimeen, kun tuote tulee saataville (valinnaisesti alle rajahinnan). Kaupat: Verkkokauppa.com, Power, Prisma (kaikki S-ryhmän myymälät), Telia, Elisa, DNA, C&C, Kärkkäinen, Veikon Kone ja Multitronic, myös myymäläkohtaisesti. Ilmoitukset voi rajata postinumeron tai paikkakunnan ja säteen mukaan.
 
 Live: https://restock-fi.vercel.app
 
@@ -16,7 +16,7 @@ Live: https://restock-fi.vercel.app
 
 | Tiedosto | Tehtävä |
 |---|---|
-| `lib/stores.js` | Kauppakohtainen haku ja saldotarkistus. Jokainen palauttaa `web` (verkkokauppa) ja `shops` (myymälät). Haku: VK, Power, Prisma. Vain katalogi: Telia (`<slug>~<variantti>`), Elisa (`<slug>~<laitenumero>`), DNA (`<slug>~<Applen tuotekoodi>`, GraphQL persisted query, hash voi vanhentua), C&C (`<slug>`) |
+| `lib/stores.js` | Kauppakohtainen haku ja saldotarkistus. Jokainen palauttaa `web` (verkkokauppa) ja `shops` (myymälät). Haku: VK, Power, Prisma, Veikon Kone (Klevu, id = EAN). Vain katalogi: Telia (`<slug>~<variantti>`), Elisa (`<slug>~<laitenumero>`), DNA (`<slug>~<Applen tuotekoodi>`, GraphQL persisted query, hash voi vanhentua), C&C (`<slug>`), Kärkkäinen (`<slug>~<partNumber>`, HCL Commerce REST), Multitronic (tuotenumero) |
 | `lib/geo.js`, `lib/postcodes.json` | Sijainnit, etäisyydet ja säderajaus |
 | `lib/catalog.js` | Katalogituotteet ja niiden kauppakohtaiset tuotenumerot |
 | `lib/summary.js` | Kokoaa tuotteen tilan, historian ja seuraajat |
@@ -41,6 +41,7 @@ Hae tuotenumerot (`/api/search?q=...`, muille tuotesivun osoitteesta ja lähdeko
 - `BLOB_READ_WRITE_TOKEN` – Vercel Blob (store `restock-fi`)
 - `DATA_KEY` – satunnainen polkuosa, ettei julkisen storen tiedostoja voi arvata
 - `CRON_SECRET` – sama arvo myös GitHubin repo-secretinä `CRON_SECRET`
+- Katalogituotteen seuranta (`product`) käyttää aina `lib/catalog.js`:n nykyistä kauppalistaa, joten uudet kaupat tulevat vanhoihin seurantoihin automaattisesti.
 - Funktiot ajetaan Tukholmassa (`regions: arn1` `vercel.json`:ssa), lähellä kauppoja.
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` – Web Push. Julkinen avain on myös `public/user.js`:ssä.
 
@@ -53,6 +54,6 @@ vercel --prod   # julkaisu
 
 ## Rajoitukset
 
-- Gigantti (Vercel Security Checkpoint), Proshop ja Jimms estävät automaattiset haut. Niitä ei kierretä. Luvallinen reitti on affiliate-feed tai kaupan oma rajapinta. Kärkkäinen, Veikon Kone, Multitronic ja Tector puuttuvat vielä.
+- Gigantti (Vercel Security Checkpoint), Tector, Proshop ja Jimms estävät automaattiset haut. Niitä ei kierretä. Luvallinen reitti on affiliate-feed tai kaupan oma rajapinta.
 - Täydennyshistoria on vain niin tarkka kuin tarkistusväli (2 min). Jos GitHub ei käynnistä uutta ajoa ennen kuin edellinen päättyy (6 h), väliin voi jäädä katko.
-- Teliasta saadaan vain verkkokaupan ja myymälöiden yhteinen tila (kyllä/ei), joten säde ei rajaa Teliaa. Elisa, DNA ja C&C kertovat tilan (saatavilla/ei) mutta eivät kappalemäärää.
+- Teliasta ja Veikon Koneesta saadaan vain myymälöiden yhteinen tila (kyllä/ei), joten säde ei rajaa niiden myymälöitä. Elisa, DNA ja C&C kertovat tilan (saatavilla/ei) mutta eivät kappalemäärää.
