@@ -52,4 +52,4 @@ vercel --prod   # julkaisu
 
 - Gigantti, Proshop ja Jimms estävät palvelinhaut (429/403/Cloudflare). Elisa ja DNA puuttuvat vielä.
 - Täydennyshistoria on vain niin tarkka kuin tarkistusväli (30 min): lyhyt täydennys voi mennä ohi.
-- Prismasta ja Teliasta saadaan vain verkkokaupan saatavuus. Powerista saadaan myymälöiden määrä, ei myymälöiden nimiä.
+- Prismasta saadaan vain verkkokaupan saatavuus. Teliasta saadaan verkkokaupan ja myymälöiden yhteinen tila (kyllä/ei). Powerista saadaan myymälöiden määrä, ei myymälöiden nimiä. Myymäläkohtainen tieto (nimet ja saldot) on vain Verkkokauppa.comista.
