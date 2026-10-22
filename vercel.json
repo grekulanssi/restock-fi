@@ -1,3 +1,11 @@
 {
-  "rewrites": [{ "source": "/tuote/:slug", "destination": "/api/tuote?slug=:slug" }]
+  "rewrites": [
+    {
+      "source": "/tuote/:slug",
+      "destination": "/api/tuote?slug=:slug"
+    }
+  ],
+  "regions": [
+    "arn1"
+  ]
 }
