@@ -1,4 +1,5 @@
 import { read, write } from "../lib/db.js";
+import { locate } from "../lib/geo.js";
 
 // GET ?user=<avain> palauttaa käyttäjän asetukset ja seurannat.
 // PUT { user, topic, email, watches } tallentaa ne. Avain syntyy selaimessa, eikä kirjautumista ole.
@@ -10,11 +11,14 @@ export default async function handler(req, res) {
   if (req.method === "GET") return res.json(users[user] || { topic: "", email: "", watches: [] });
 
   if (req.method === "PUT") {
-    const { topic = "", email = "", watches = [], push = [], savedAt = Date.now() } = req.body || {};
+    const { topic = "", email = "", watches = [], push = [], location = "", radiusKm = null, savedAt = Date.now() } = req.body || {};
     users[user] = {
       topic: String(topic).replace(/[^\w-]/g, "").slice(0, 64),
       email: String(email).slice(0, 120),
       savedAt: Number(savedAt) || Date.now(),
+      location: String(location).slice(0, 60),
+      coords: locate(location),
+      radiusKm: Number(radiusKm) > 0 ? Math.min(Number(radiusKm), 2000) : null,
       push: (Array.isArray(push) ? push : []).filter((p) => /^https:\/\//.test(p?.endpoint) && p.keys?.p256dh && p.keys?.auth)
         .slice(-5).map((p) => ({ endpoint: p.endpoint, keys: { p256dh: p.keys.p256dh, auth: p.keys.auth } })),
       watches: watches.slice(0, 20).map((w) => ({

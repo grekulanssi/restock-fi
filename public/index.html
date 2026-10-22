@@ -34,6 +34,11 @@
     <p class="muted" style="margin:0">Tuotteet tarkistetaan taustalla 2 minuutin välein, vaikka sivu olisi kiinni. Ilmoitus tulee suoraan puhelimeen tai tietokoneelle.</p>
     <div id="pushhelp" class="muted" hidden><strong>iPhone:</strong> ilmoitukset toimivat, kun sivu on lisätty Koti-valikkoon. Paina Safarissa Jaa-painiketta (neliö ja nuoli), valitse <em>Lisää Koti-valikkoon</em>, avaa Restock Koti-valikosta ja paina sitten alla olevaa nappia.</div>
     <div class="row" style="margin:0"><span id="pushstatus" class="muted"></span><span><button class="ghost" id="test">Testi-ilmoitus</button> <button id="enablepush">Ota ilmoitukset käyttöön</button></span></div>
+    <div class="follow" style="margin:0;grid-template-columns:1fr 130px">
+      <label>Postinumero tai paikkakunta <input id="location" placeholder="esim. 90100 tai Oulu"></label>
+      <label>Säde km <input id="radius" type="number" placeholder="kaikki"></label>
+    </div>
+    <p class="muted" style="margin:0">Jos sijainti ja säde on annettu, ilmoitus tulee vain, kun tuotetta on verkkokaupassa tai myymälässä säteen sisällä.</p>
     <label>Sähköposti (valinnainen, ilmoitus myös sähköpostiin) <input id="email" type="email" placeholder="nimi@example.com"></label>
     <details><summary class="muted">Vaihtoehto: ntfy-sovellus</summary>
       <label style="margin-top:8px">ntfy-aihe (tilaa sama aihe <a href="https://ntfy.sh">ntfy</a>-sovelluksessa) <input id="topic"></label>
@@ -58,6 +63,8 @@ async function load() {
   data = await loadData();
   document.getElementById("topic").value = data.topic;
   document.getElementById("email").value = data.email || "";
+  document.getElementById("location").value = data.location || "";
+  document.getElementById("radius").value = data.radiusKm || "";
   renderWatches();
   pushStatus();
   checkAll();
@@ -66,6 +73,8 @@ async function load() {
 async function save() {
   data.topic = document.getElementById("topic").value.trim();
   data.email = document.getElementById("email").value.trim();
+  data.location = document.getElementById("location").value.trim();
+  data.radiusKm = Number(document.getElementById("radius").value) || null;
   try { await saveData(data); } catch (e) { alert(e.message); }
 }
 
@@ -116,13 +125,13 @@ window.removeWatch = async function (id) {
 }
 
 // Live-tarkistus, kun sivu on auki
-const hit = (w, o) => o?.available && (!w.maxPrice || o.price <= w.maxPrice);
+const hit = (w, o) => (o?.near ? o.near.length > 0 : o?.available) && (!w.maxPrice || o.price <= w.maxPrice);
 
 async function checkAll() {
   const offers = new Map(data.watches.flatMap((w) => w.offers.map((o) => [`${o.store}:${o.id}`, o])));
   await Promise.all([...offers].map(async ([key, o]) => {
     try {
-      const r = await fetch(`/api/check?store=${o.store}&id=${o.id}`);
+      const r = await fetch(`/api/check?store=${o.store}&id=${o.id}&loc=${encodeURIComponent(data.location || "")}&r=${data.radiusKm || ""}`);
       const now = await r.json();
       if (!r.ok) throw new Error(now.error);
       for (const w of data.watches) if (w.offers.some((x) => `${x.store}:${x.id}` === key) && hit(w, now) && live[key] && !hit(w, live[key])) browserNotify(`${now.name}: ${STORE_NAMES[o.store]}`, now.url);
@@ -148,7 +157,8 @@ function renderWatches() {
       ${w.offers.map((o) => {
         const s = live[`${o.store}:${o.id}`];
         const status = !s ? "Tarkistetaan…" : s.error ? `Virhe: ${esc(s.error)}` :
-          `<span class="${s.available ? "ok" : "no"}">${s.available ? "Saatavilla" : "Loppu"}</span> · ${esc(s.detail)}`;
+          s.near.length ? `<span class="ok">Saatavilla</span> · ${esc(s.near.slice(0, 3).join(" · "))}${s.near.length > 3 ? ` (+${s.near.length - 3})` : ""}`
+          : `<span class="no">${s.available && data.radiusKm ? "Ei säteellä" : "Loppu"}</span> · ${esc(s.detail)}`;
         return `<div class="offer"><img src="${esc(s?.image || "")}" alt="" loading="lazy">
           <div><div class="muted">${STORE_NAMES[o.store]}</div><a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.name)}</a><div class="muted">${status}</div></div>
           <strong>${s?.price ? s.price + " €" : ""}</strong></div>`;

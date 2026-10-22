@@ -2,6 +2,7 @@ import { STORES } from "../lib/stores.js";
 import { CATALOG } from "../lib/catalog.js";
 import { read, write } from "../lib/db.js";
 import { notify, hasChannel } from "../lib/notify.js";
+import { hitsFor } from "../lib/geo.js";
 
 // GitHub Actions kutsuu tätä ajastetusti. Tarkistaa katalogin ja käyttäjien seuraamat tuotteet,
 // kirjaa täydennykset historiaan ja lähettää ntfy-ilmoitukset (ja halutessa sähköpostin).
@@ -24,10 +25,12 @@ export default async function handler(req, res) {
       for (const o of w.offers) {
         const key = `${o.store}:${o.id}`, now = checked[key];
         if (!now || now.error) continue;
-        const hit = now.available && (!w.maxPrice || now.price <= w.maxPrice);
-        const hitKey = `${key}:${w.maxPrice || ""}`;
+        // Saatavilla käyttäjälle = verkossa tai säteen sisällä olevassa myymälässä, ja hinta rajan alla.
+        const hits = hitsFor(now, u);
+        const hit = hits.length > 0 && (!w.maxPrice || now.price <= w.maxPrice);
+        const hitKey = `${key}:${w.maxPrice || ""}:${u.coords || ""}:${u.radiusKm || ""}`;
         if (hit && !state.hits?.[hitKey] && hasChannel(u)) {
-          await notify(u, `${now.name} saatavilla: ${STORES[o.store].name}`, `${now.price} € · ${now.detail}`, now.url);
+          await notify(u, `${now.name} saatavilla: ${STORES[o.store].name}`, `${now.price} € · ${hits.slice(0, 3).map((h) => h.label).join(" · ")}`, now.url);
           sent.push(hitKey);
         }
         (state.hits ||= {})[hitKey] = hit;
