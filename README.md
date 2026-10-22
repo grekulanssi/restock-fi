@@ -16,7 +16,7 @@ Live: https://restock-fi.vercel.app
 
 | Tiedosto | Tehtävä |
 |---|---|
-| `lib/stores.js` | Kauppakohtainen haku ja saldotarkistus. Jokainen palauttaa `web` (verkkokauppa) ja `shops` (myymälät). Haku: VK, Power, Prisma, Veikon Kone (Klevu, id = EAN). Vain katalogi: Telia (`<slug>~<variantti>`), Elisa (`<slug>~<laitenumero>`), DNA (`<slug>~<Applen tuotekoodi>`, GraphQL persisted query, hash voi vanhentua), C&C (`<slug>`), Kärkkäinen (`<slug>~<partNumber>`, HCL Commerce REST), Multitronic (tuotenumero) |
+| `lib/stores.js` | Kauppakohtainen haku ja saldotarkistus. Jokainen palauttaa `web` (verkkokauppa) ja `shops` (myymälät). Haku: VK, Power, Prisma, Veikon Kone (Klevu-haku, id = EAN, verkkosaatavuus tuotesivun `stockStatusData`-kentästä, koska Klevun `low_stock` kattaa myös ennakkomyynnin). Vain katalogi: Telia (`<slug>~<variantti>`), Elisa (`<slug>~<laitenumero>`), DNA (`<slug>~<Applen tuotekoodi>`, GraphQL persisted query, hash voi vanhentua), C&C (`<slug>`), Kärkkäinen (`<slug>~<partNumber>`, HCL Commerce REST), Multitronic (tuotenumero) |
 | `lib/geo.js`, `lib/postcodes.json` | Sijainnit, etäisyydet ja säderajaus |
 | `lib/catalog.js` | Katalogituotteet ja niiden kauppakohtaiset tuotenumerot |
 | `lib/summary.js` | Kokoaa tuotteen tilan, historian ja seuraajat |
