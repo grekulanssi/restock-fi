@@ -1,5 +1,5 @@
 import { STORES } from "../lib/stores.js";
-import { CATALOG } from "../lib/catalog.js";
+import { CATALOG, bySlug } from "../lib/catalog.js";
 import { read, write } from "../lib/db.js";
 import { notify, hasChannel } from "../lib/notify.js";
 import { hitsFor } from "../lib/geo.js";
@@ -12,6 +12,8 @@ export default async function handler(req, res) {
   const [users, state, events] = await Promise.all([read("users", {}), read("state", {}), read("events", [])]);
   const offers = new Map();
   for (const p of CATALOG) for (const o of p.offers) offers.set(`${o.store}:${o.id}`, o);
+  // Katalogituotteen seuranta käyttää aina katalogin nykyistä kauppalistaa, jotta uudet kaupat tulevat mukaan.
+  for (const u of Object.values(users)) for (const w of u.watches) if (w.product && bySlug(w.product)) w.offers = bySlug(w.product).offers;
   for (const u of Object.values(users)) for (const w of u.watches) for (const o of w.offers) offers.set(`${o.store}:${o.id}`, o);
 
   const checked = {};
