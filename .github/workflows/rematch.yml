@@ -1,5 +1,5 @@
 name: Hae seurannat uudelleen
-# Kerran yössä: omat seurannat haetaan uudelleen kaikista kaupoista, ja uudet kaupat lisätään seurantaan (api/rematch.js).
+# Kerran yössä: rekisterin tuotteet haetaan uudelleen kaikista kaupoista, ja uudet kaupat lisätään tuotteelle (api/rematch.js).
 on:
   schedule:
     - cron: "30 0 * * *"

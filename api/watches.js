@@ -1,24 +1,25 @@
-import { read, write } from "../lib/db.js";
+import { update, read } from "../lib/db.js";
 import { locate } from "../lib/geo.js";
-import { bySlug } from "../lib/catalog.js";
-import { maxOffers } from "../lib/match.js";
+import { loadProducts, publicProduct } from "../lib/products.js";
 
-// GET ?user=<avain> palauttaa käyttäjän asetukset ja seurannat.
+// GET ?user=<avain> palauttaa käyttäjän asetukset ja seurannat sekä seurattujen tuotteiden tiedot (products).
 // PUT { user, email, location, radiusKm, push, watches } tallentaa ne. Avain syntyy selaimessa, eikä kirjautumista ole.
+// Seuranta on { id, product, maxPrice }: tuote ja sen kaupat ovat rekisterissä (lib/products.js).
 export default async function handler(req, res) {
   const user = String(req.query.user || req.body?.user || "");
   if (!/^[a-z0-9]{16,40}$/.test(user)) return res.status(400).json({ error: "Virheellinen käyttäjäavain" });
 
-  const users = await read("users", {});
   if (req.method === "GET") {
+    const [users, reg] = await Promise.all([read("users", {}), loadProducts()]);
     const u = users[user] || { email: "", watches: [] };
-    for (const w of u.watches) if (w.product && bySlug(w.product)) w.offers = bySlug(w.product).offers.map((o) => ({ ...o, name: w.offers.find((x) => x.store === o.store && x.id === o.id)?.name || w.name }));
-    return res.json(u);
+    const products = Object.fromEntries(u.watches.filter((w) => reg[w.product]).map((w) => [w.product, publicProduct(reg[w.product])]));
+    return res.json({ ...u, products });
   }
 
   if (req.method === "PUT") {
     const { email = "", watches = [], push = [], location = "", radiusKm = null, savedAt = Date.now() } = req.body || {};
-    users[user] = {
+    const seen = new Set();
+    const entry = {
       email: String(email).slice(0, 120),
       savedAt: Number(savedAt) || Date.now(),
       location: String(location).slice(0, 60),
@@ -26,16 +27,18 @@ export default async function handler(req, res) {
       radiusKm: Number(radiusKm) > 0 ? Math.min(Number(radiusKm), 2000) : null,
       push: (Array.isArray(push) ? push : []).filter((p) => /^https:\/\//.test(p?.endpoint) && p.keys?.p256dh && p.keys?.auth)
         .slice(-5).map((p) => ({ endpoint: p.endpoint, keys: { p256dh: p.keys.p256dh, auth: p.keys.auth } })),
-      watches: watches.slice(0, 20).map((w) => ({
-        id: String(w.id), product: /^[a-z0-9-]{1,40}$/.test(w.product || "") ? w.product : undefined, name: String(w.name).slice(0, 120), maxPrice: Number(w.maxPrice) || null,
-        anyColor: w.anyColor ? true : undefined,
-        offers: (w.offers || []).slice(0, maxOffers(w)).map((o) => ({
-          store: o.store, id: String(o.id), name: String(o.name || "").slice(0, 160), url: o.url, color: o.color ? String(o.color).slice(0, 40) : undefined,
-        })),
-      })),
+      watches: (Array.isArray(watches) ? watches : [])
+        .filter((w) => /^[a-z0-9-]{1,80}$/.test(w?.product || "") && !seen.has(w.product) && seen.add(w.product))
+        .slice(0, 20).map((w) => ({ id: String(w.id).slice(0, 20), product: w.product, maxPrice: Number(w.maxPrice) || null })),
     };
-    await write("users", users);
-    return res.json(users[user]);
+    // Käyttäjä ilman seurantoja ja ilmoituskanavia poistetaan. Muiden samanaikaiset tallennukset säilyvät (ETag-ehto).
+    await update("users", {}, (users) => {
+      const before = JSON.stringify(users[user]);
+      if (!entry.watches.length && !entry.email && !entry.push.length) delete users[user];
+      else users[user] = entry;
+      return JSON.stringify(users[user]) !== before;
+    });
+    return res.json(entry);
   }
   res.status(405).end();
 }

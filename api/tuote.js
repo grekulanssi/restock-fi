@@ -1,7 +1,8 @@
-import { bySlug } from "../lib/catalog.js";
 import { loadAll, summarize } from "../lib/summary.js";
+import { loadProducts, publicProduct } from "../lib/products.js";
 
-// Julkinen tuotesivu /tuote/<slug>. Renderöidään palvelimella, jotta sivu näkyy hakukoneissa.
+// Julkinen tuotesivu /tuote/<slug> jokaiselle rekisterin tuotteelle. Renderöidään palvelimella, jotta sivu näkyy hakukoneissa.
+// Sivulla on vain kauppojen data ja seuraajamäärä, ei mitään käyttäjäkohtaista.
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const TZ = { timeZone: "Europe/Helsinki" };
 const fmtDate = (iso) => new Date(iso).toLocaleString("fi-FI", { ...TZ, day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -21,16 +22,21 @@ function duration(e) {
 }
 
 export default async function handler(req, res) {
-  const p = bySlug(String(req.query.slug || ""));
+  const slug = String(req.query.slug || "");
+  const data = await loadAll();
+  // Juuri luotu tuote ei välttämättä ole vielä CDN:ssä, joten se haetaan suoraan tallennustilasta.
+  const p = data.products[slug] || (await loadProducts({ fresh: true }))[slug];
   if (!p) return res.status(404).send("Tuotetta ei löytynyt");
-  const s = await summarize(p, await loadAll(), { live: true });
+  const s = await summarize(p, data, { live: true });
 
   const days = [...Array(30)].map((_, i) => {
     const d = new Date(Date.now() - (29 - i) * 864e5).toLocaleDateString("fi-FI", TZ);
     return s.history.filter((e) => new Date(e.start).toLocaleDateString("fi-FI", TZ) === d).length;
   });
   const maxDay = Math.max(1, ...days);
-  const stores = s.offers.map((o) => `${o.storeName} (${eur(o.price)})`).join(", ");
+  const minBy = {};
+  for (const o of s.offers) if (!(o.storeName in minBy) || (o.price && !(o.price >= minBy[o.storeName]))) minBy[o.storeName] = o.price;
+  const stores = Object.entries(minBy).map(([n, price]) => `${n} (${eur(price)})`).join(", ");
   const lead = `${p.name} seurataan kaupoissa ${stores}. ` +
     (s.lastRestock ? `Viimeksi saatavilla ${fmtDate(s.lastRestock.start)} (${s.lastRestock.storeName}), 30 päivän aikana ${s.restocks30} täydennystä.` : "Täydennyksiä ei ole vielä havaittu.");
 
@@ -52,7 +58,7 @@ export default async function handler(req, res) {
 <main>
   <a class="back" href="/">← Kaikki tuotteet</a>
   <div class="row" style="margin-top:12px">
-    <div><div class="muted">${esc(p.category)}</div><h1>${esc(p.name)}</h1></div>
+    <div><div class="muted">${esc(p.category || (p.anyColor ? "Mikä tahansa väri" : ""))}</div><h1>${esc(p.name)}</h1></div>
     <span class="${s.available ? "ok" : "no"}">${s.available ? "Saatavilla nyt" : "Ei saatavilla"}</span>
   </div>
   <p class="lead">${esc(lead)}</p>
@@ -76,7 +82,7 @@ export default async function handler(req, res) {
   <div class="box">
     ${s.offers.map((o) => `<div class="buy">
       <img src="${esc(o.image || "")}" alt="" loading="lazy">
-      <div><a href="${esc(o.url)}" target="_blank" rel="noopener"><strong>${esc(o.storeName)}</strong></a>
+      <div><a href="${esc(o.url)}" target="_blank" rel="noopener"><strong>${esc(o.storeName)}</strong></a>${o.color ? ` <span class="muted">${esc(o.color)}</span>` : ""}
         <div class="muted"><span class="${o.available ? "ok" : "no"}">${o.available ? "Saatavilla" : "Loppu"}</span>${o.detail ? " · " + esc(o.detail) : ""}</div>
         <div class="muted">${o.lastRestock ? `Viimeksi varastossa ${ago(o.lastRestock.start)}` : "Ei havaittuja täydennyksiä"}</div></div>
       <strong>${eur(o.price)}</strong>
@@ -94,7 +100,7 @@ export default async function handler(req, res) {
 </main>
 <script type="module">
 import { loadData, saveData, rand } from "/user.js";
-const product = ${JSON.stringify({ slug: p.slug, name: p.name, offers: s.offers.map(({ store, id, name, url }) => ({ store, id, name: name || p.name, url })) })};
+const product = ${JSON.stringify(publicProduct(p)).replace(/</g, "\\u003c")};
 let data;
 loadData().then((d) => {
   data = d;
@@ -107,7 +113,8 @@ function markFollowed() {
 }
 document.getElementById("follow").onclick = async () => {
   if (!data) return;
-  data.watches.push({ id: rand(8), product: product.slug, name: product.name, maxPrice: Number(document.getElementById("wmax").value) || null, offers: product.offers });
+  data.watches.push({ id: rand(8), product: product.slug, maxPrice: Number(document.getElementById("wmax").value) || null });
+  (data.products ||= {})[product.slug] = product;
   try { await saveData(data); } catch (e) { return alert(e.message); }
   const w = document.getElementById("watchers"); w.textContent = Number(w.textContent) + 1;
   markFollowed();

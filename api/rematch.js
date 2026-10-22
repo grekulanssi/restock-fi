@@ -1,42 +1,39 @@
-import { read, write } from "../lib/db.js";
-import { matchAll, matchModel, maxOffers } from "../lib/match.js";
+import { read, update } from "../lib/db.js";
+import { matchAll, matchModel } from "../lib/match.js";
+import { loadProducts, withSeeds, watcherCounts, addOffers } from "../lib/products.js";
 
-// Kerran yössä (.github/workflows/rematch.yml): omat seurannat (ei katalogituotteet) haetaan uudelleen kaikista kaupoista,
-// ja kaupat, joihin tuote on tullut myyntiin, lisätään seurantaan. "Mikä tahansa väri" -seurannoille haetaan kaikki värit.
+// Kerran yössä (.github/workflows/rematch.yml): rekisterin tuotteet (katalogi ja seuratut) haetaan uudelleen kaikista
+// kaupoista, ja kaupat, joihin tuote on tullut myyntiin, lisätään tuotteelle. Mitään ei poisteta.
 export default async function handler(req, res) {
   if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).end();
   const deadline = Date.now() + 240e3;
-  const users = await read("users", {});
+  const [reg, users] = await Promise.all([loadProducts(), read("users", {})]);
+  const counts = watcherCounts(users);
 
-  // Sama lähdetuote haetaan vain kerran, vaikka sitä seuraisi moni. Järjestys arvotaan, jotta aikarajan ylittyessä
-  // eri seurannat jäävät väliin eri öinä.
-  const jobKey = (w) => !w.product && w.offers?.[0] && `${w.anyColor ? "model" : "exact"}:${w.offers[0].store}:${w.offers[0].id}`;
-  const jobs = new Map();
-  for (const u of Object.values(users)) for (const w of u.watches || []) if (jobKey(w)) jobs.set(jobKey(w), { w, offers: null });
-  const queue = [...jobs.values()].sort(() => Math.random() - 0.5);
+  // Järjestys arvotaan, jotta aikarajan ylittyessä eri tuotteet jäävät väliin eri öinä.
+  const queue = Object.values(reg).filter((p) => (p.seed || counts[p.slug]) && p.offers[0]).sort(() => Math.random() - 0.5);
+  const results = new Map();
   await Promise.all(Array.from({ length: 3 }, async () => {
-    for (let job; Date.now() < deadline && (job = queue.shift()); ) {
-      const { store, id } = job.w.offers[0];
-      job.offers = await (job.w.anyColor ? matchModel : matchAll)(store, id).catch(() => null);
+    for (let p; Date.now() < deadline && (p = queue.shift()); ) {
+      const { store, id } = p.offers[0];
+      const found = await (p.anyColor ? matchModel : matchAll)(store, id).catch(() => null);
+      if (found) results.set(p.slug, found);
     }
   }));
 
-  // Selain voi tallentaa users.jsonin samaan aikaan, joten uudet kaupat lisätään juuri luettuun versioon eikä mitään poisteta.
-  // savedAt päivittyy, jotta selain (public/user.js) ottaa tämän version oman kopionsa sijaan. Kirjoitus vain, jos jotain lisättiin.
-  const fresh = await read("users", {});
+  // Lisäys tehdään juuri luettuun versioon (ETag-ehto), joten samanaikaisesti luodut tuotteet säilyvät.
   const added = [];
-  for (const u of Object.values(fresh)) {
-    const before = added.length;
-    for (const w of u.watches || []) {
-      for (const o of (jobKey(w) && jobs.get(jobKey(w))?.offers) || []) {
-        if (w.offers.length >= maxOffers(w)) break;
-        if (w.offers.some((x) => x.store === o.store && (!w.anyColor || x.id === o.id))) continue;
-        w.offers.push({ store: o.store, id: o.id, name: String(o.name || "").slice(0, 160), url: o.url, color: w.anyColor ? o.color : undefined });
-        added.push(`${o.store}:${o.id}`);
-      }
+  await update("products", {}, (raw) => {
+    withSeeds(raw);
+    added.length = 0;
+    let changed = false;
+    for (const [slug, found] of results) {
+      const p = raw[slug], before = p.offers.length;
+      // Tunnistusavaimet ja kuva voivat täydentyä, vaikka kauppoja ei tulisi lisää (esim. katalogituotteen EAN).
+      if (addOffers(p, found, p.anyColor)) changed = true;
+      added.push(...p.offers.slice(before).map((o) => `${slug} ${o.store}:${o.id}`));
     }
-    if (added.length > before) u.savedAt = Date.now();
-  }
-  if (added.length) await write("users", fresh);
-  res.json({ sources: jobs.size, done: [...jobs.values()].filter((j) => j.offers).length, added });
+    return changed;
+  });
+  res.json({ products: results.size, added });
 }

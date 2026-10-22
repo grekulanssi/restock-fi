@@ -16,6 +16,9 @@ export async function loadData() {
   try { local = JSON.parse(ls.get("data:" + user)); } catch {}
   const server = await (await fetch(`/api/watches?user=${user}`)).json();
   const data = (local?.savedAt || 0) > (server.savedAt || 0) ? local : server;
+  // Tuotteiden tiedot (nimi ja kaupat) tulevat palvelimen rekisteristä. Juuri luotu tuote voi puuttua CDN:n versiosta.
+  data.products = { ...local?.products, ...server.products };
+  data.watches ||= [];
   return data;
 }
 
