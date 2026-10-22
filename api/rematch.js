@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       for (const o of (jobKey(w) && jobs.get(jobKey(w))?.offers) || []) {
         if (w.offers.length >= maxOffers(w)) break;
         if (w.offers.some((x) => x.store === o.store && (!w.anyColor || x.id === o.id))) continue;
-        w.offers.push({ store: o.store, id: o.id, name: String(o.name || "").slice(0, 160), url: o.url, color: o.color });
+        w.offers.push({ store: o.store, id: o.id, name: String(o.name || "").slice(0, 160), url: o.url, color: w.anyColor ? o.color : undefined });
         added.push(`${o.store}:${o.id}`);
       }
     }
