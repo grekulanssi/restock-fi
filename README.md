@@ -9,7 +9,7 @@ Live: https://restock-fi.vercel.app
 - **Katalogi** (`lib/catalog.js`): kuratoidut tuotteet, joilla on julkinen sivu `/tuote/<slug>`. Sivulla näkyvät hinnat ja tila kaupoittain, täydennykset 30 päivältä, viimeiset täydennykset kestoineen ja seuraajamäärä. Lisäksi on Seuraa-nappi. Sama tuote yhdistetään kauppoihin käsin, ja värivaihtoehdoista seurataan yhtä.
 - **Oma haku**: katalogin ulkopuoliset tuotteet haetaan kerralla kaikista kaupoista, joissa on haku. Käyttäjä valitsee osumista saman tuotteen.
 - Kirjautumista ei ole. Selain luo käyttäjäavaimen, ja linkillä `/?u=<avain>` saman listan saa auki toisella laitteella.
-- **Taustatarkistus**: GitHub Actions (`.github/workflows/check.yml`, yksityinen repo) kutsuu `/api/cron`-osoitetta 30 min välein. Cron tarkistaa katalogin ja kaikkien seuraamat tuotteet, kirjaa täydennykset (loppu → saatavilla → loppu) ja lähettää ilmoitukset.
+- **Taustatarkistus**: GitHub Actions (`.github/workflows/check.yml`, yksityinen repo) kutsuu `/api/cron`-osoitetta 5 min välein. Cron tarkistaa katalogin ja kaikkien seuraamat tuotteet, kirjaa täydennykset (loppu → saatavilla → loppu) ja lähettää ilmoitukset.
 - **Ilmoitukset** (`lib/notify.js`): ensisijaisesti Web Push (`public/sw.js`, VAPID-avaimet). iPhonessa push toimii vain, kun sivu on lisätty Koti-valikkoon (iOS 16.4+), ja sivu neuvoo tämän. Vaihtoehtoina [ntfy.sh](https://ntfy.sh)-aihe ja sähköposti (ntfy:n kautta). ntfy:n iOS-sovellus näyttää viestit viiveellä tai vasta avattaessa, joten sitä ei suositella iPhonelle.
 - Kun sivu on auki, se tarkistaa saldot myös itse 2 min välein ja näyttää selainilmoituksen.
 
@@ -51,5 +51,5 @@ vercel --prod   # julkaisu
 ## Rajoitukset
 
 - Gigantti, Proshop ja Jimms estävät palvelinhaut (429/403/Cloudflare). Elisa ja DNA puuttuvat vielä.
-- Täydennyshistoria on vain niin tarkka kuin tarkistusväli (30 min): lyhyt täydennys voi mennä ohi.
+- Täydennyshistoria on vain niin tarkka kuin tarkistusväli (5 min, GitHub voi myöhästyä ruuhkassa): lyhyt täydennys voi mennä ohi.
 - Prismasta saadaan vain verkkokaupan saatavuus. Teliasta saadaan verkkokaupan ja myymälöiden yhteinen tila (kyllä/ei). Powerista saadaan myymälöiden määrä, ei myymälöiden nimiä. Myymäläkohtainen tieto (nimet ja saldot) on vain Verkkokauppa.comista.
