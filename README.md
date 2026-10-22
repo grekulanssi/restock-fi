@@ -39,7 +39,7 @@ Live: https://restock-fi.vercel.app
 | `public/` | Etusivu, `style.css`, `user.js` (seurannat ja push-tilaus), `sw.js` ja kuvakkeet |
 | `api/manifest.js` | Käyttäjäkohtainen manifest, jotta Koti-valikon sovellus avautuu omalla listalla (iOS:ssä eri tallennustila kuin Safarilla) |
 
-Blobin CDN voi palauttaa noin minuutin vanhaa dataa. Siksi `user.js` pitää seurannoista oman kopion selaimessa ja käyttää versiota, jonka `savedAt` on uudempi, ja tuotesivu hakee juuri luodun tuotteen suoraan tallennustilasta.
+Blobin CDN voi palauttaa minuutista muutamaan minuuttiin vanhaa dataa, joten etusivu ja tuotesivu päivittyvät viiveellä. Päivitykset (`update`) lukevat uusimman version ja tarkistavat sen ETagin. Siksi `user.js` pitää seurannoista oman kopion selaimessa ja käyttää versiota, jonka `savedAt` on uudempi, ja tuotesivu hakee juuri luodun tuotteen suoraan tallennustilasta.
 
 ## Katalogi käsin
 
