@@ -1,6 +1,7 @@
 import { read, write } from "../lib/db.js";
 import { locate } from "../lib/geo.js";
 import { bySlug } from "../lib/catalog.js";
+import { maxOffers } from "../lib/match.js";
 
 // GET ?user=<avain> palauttaa käyttäjän asetukset ja seurannat.
 // PUT { user, email, location, radiusKm, push, watches } tallentaa ne. Avain syntyy selaimessa, eikä kirjautumista ole.
@@ -27,7 +28,10 @@ export default async function handler(req, res) {
         .slice(-5).map((p) => ({ endpoint: p.endpoint, keys: { p256dh: p.keys.p256dh, auth: p.keys.auth } })),
       watches: watches.slice(0, 20).map((w) => ({
         id: String(w.id), product: /^[a-z0-9-]{1,40}$/.test(w.product || "") ? w.product : undefined, name: String(w.name).slice(0, 120), maxPrice: Number(w.maxPrice) || null,
-        offers: (w.offers || []).slice(0, 10).map((o) => ({ store: o.store, id: String(o.id), name: String(o.name || "").slice(0, 160), url: o.url })),
+        anyColor: w.anyColor ? true : undefined,
+        offers: (w.offers || []).slice(0, maxOffers(w)).map((o) => ({
+          store: o.store, id: String(o.id), name: String(o.name || "").slice(0, 160), url: o.url, color: o.color ? String(o.color).slice(0, 40) : undefined,
+        })),
       })),
     };
     await write("users", users);

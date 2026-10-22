@@ -86,9 +86,10 @@ document.getElementById("search").onsubmit = async (e) => {
       <label class="hit"><input type="checkbox" value="${x.i}"><img src="${esc(x.image)}" alt="" loading="lazy"><span>${esc(x.name)}</span><span>${x.price} €</span></label>`).join("") : "").join("")
     + r.errors.map((e) => `<p class="muted">${esc(e)}</p>`).join("")
     + `<p class="muted">Valitse tuote yhdestä kaupasta. Palvelu etsii saman tuotteen muista kaupoista tuotekoodin perusteella.</p>
-      <div class="follow"><input id="wname" placeholder="Nimi, esim. PS5 Pro"><input id="wmax" type="number" placeholder="Maksimihinta €"><button id="follow">Seuraa valittuja</button></div>`;
-  el.querySelectorAll("input[type=checkbox]").forEach((c) => (c.onchange = () => {
-    const first = el.querySelector("input[type=checkbox]:checked");
+      <div class="follow"><input id="wname" placeholder="Nimi, esim. PS5 Pro"><input id="wmax" type="number" placeholder="Maksimihinta €"><button id="follow">Seuraa valittuja</button></div>
+      <label class="check"><input type="checkbox" id="wany"> Mikä tahansa väri <span class="muted">(sama malli ja tallennustila)</span></label>`;
+  el.querySelectorAll("label.hit input").forEach((c) => (c.onchange = () => {
+    const first = el.querySelector("label.hit input:checked");
     const n = document.getElementById("wname");
     if (first && !n.dataset.touched) n.value = lastResults[first.value].name;
   }));
@@ -97,18 +98,24 @@ document.getElementById("search").onsubmit = async (e) => {
 };
 
 async function addWatch() {
-  const picked = [...document.querySelectorAll("#results input[type=checkbox]:checked")].map((c) => lastResults[c.value]);
+  const picked = [...document.querySelectorAll("#results label.hit input:checked")].map((c) => lastResults[c.value]);
   if (!picked.length) return alert("Valitse ainakin yksi tuote");
   const w = {
     id: rand(8),
     name: document.getElementById("wname").value.trim() || picked[0].name,
     maxPrice: Number(document.getElementById("wmax").value) || null,
-    offers: picked.map(({ store, id, name, url }) => ({ store, id, name, url })),
+    anyColor: document.getElementById("wany").checked || undefined,
+    offers: picked.map(({ store, id, name, url, color }) => ({ store, id, name, url, color })),
   };
-  document.getElementById("results").innerHTML = `<p class="muted">Etsitään samaa tuotetta muista kaupoista… (noin 20 s)</p>`;
-  await matchInto(w);
+  const named = document.getElementById("wname").dataset.touched;
+  document.getElementById("results").innerHTML = `<p class="muted">${w.anyColor ? "Etsitään saman mallin kaikkia värejä kaupoista… (noin 30 s)" : "Etsitään samaa tuotetta muista kaupoista… (noin 20 s)"}</p>`;
+  const r = await matchInto(w);
+  // Mikä tahansa väri: nimeksi malli ilman väriä, jos käyttäjä ei ole kirjoittanut omaa.
+  if (w.anyColor && !named && r?.model) w.name = r.model;
   data.watches.push(w);
-  document.getElementById("results").innerHTML = `<p class="muted">Seurataan ${w.offers.length} kaupassa: ${esc(w.offers.map((o) => STORE_NAMES[o.store]).join(", "))}.</p>`;
+  const stores = [...new Set(w.offers.map((o) => STORE_NAMES[o.store]))].join(", ");
+  const colors = [...new Set(w.offers.map((o) => o.color).filter(Boolean))].join(", ");
+  document.getElementById("results").innerHTML = `<p class="muted">${w.anyColor ? `Seurataan ${w.offers.length} tuotetta kaupoissa ${esc(stores)}. Värit: ${esc(colors || "–")}.` : `Seurataan ${w.offers.length} kaupassa: ${esc(stores)}.`}</p>`;
   document.getElementById("q").value = "";
   if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
   renderWatches();
@@ -117,10 +124,16 @@ async function addWatch() {
 }
 
 // Etsii valitun tuotteen muista kaupoista (EAN / valmistajan koodi) ja lisää ne seurantaan.
+// Mikä tahansa väri: kaikki saman mallin värit, myös useampi samasta kaupasta.
 async function matchInto(w) {
   const first = w.offers[0];
-  const r = await fetch(`/api/match?store=${first.store}&id=${encodeURIComponent(first.id)}`).then((x) => x.json()).catch(() => null);
-  for (const o of r?.offers || []) if (!w.offers.some((x) => x.store === o.store)) w.offers.push({ store: o.store, id: o.id, name: o.name, url: o.url });
+  const r = await fetch(`/api/match?store=${first.store}&id=${encodeURIComponent(first.id)}${w.anyColor ? "&anyColor=1" : ""}`).then((x) => x.json()).catch(() => null);
+  for (const o of r?.offers || []) {
+    const old = w.offers.find((x) => x.store === o.store && x.id === o.id);
+    if (old) old.color ||= o.color;
+    else if (w.anyColor || !w.offers.some((x) => x.store === o.store)) w.offers.push({ store: o.store, id: o.id, name: o.name, url: o.url, color: o.color });
+  }
+  return r;
 }
 
 window.rematchWatch = async function (id) {
@@ -168,14 +181,14 @@ function renderWatches() {
     const any = w.offers.some((o) => hit(w, live[`${o.store}:${o.id}`]));
     return `<div class="box watch">
       <div class="row"><h3>${w.product ? `<a href="/tuote/${w.product}">${esc(w.name)}</a>` : esc(w.name)}</h3><span class="${any ? "ok" : "no"}">${any ? "Saatavilla" : "Ei saatavilla"}</span></div>
-      <div class="muted">${w.maxPrice ? `Ilmoitus, kun hinta on enintään ${w.maxPrice} €` : "Ilmoitus heti, kun saatavilla"}</div>
+      <div class="muted">${w.maxPrice ? `Ilmoitus, kun hinta on enintään ${w.maxPrice} €` : "Ilmoitus heti, kun saatavilla"}${w.anyColor ? " · mikä tahansa väri" : ""}</div>
       ${w.offers.map((o) => {
         const s = live[`${o.store}:${o.id}`];
         const status = !s ? "Tarkistetaan…" : s.error ? `Virhe: ${esc(s.error)}` :
           s.near.length ? `<span class="ok">Saatavilla</span> · ${esc(s.near.slice(0, 3).join(" · "))}${s.near.length > 3 ? ` (+${s.near.length - 3})` : ""}`
           : `<span class="no">${s.available && data.radiusKm ? "Ei säteellä" : "Loppu"}</span> · ${esc(s.detail)}`;
         return `<div class="offer"><img src="${esc(s?.image || "")}" alt="" loading="lazy">
-          <div><div class="muted">${STORE_NAMES[o.store]}</div><a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.name)}</a><div class="muted">${status}</div></div>
+          <div><div class="muted">${STORE_NAMES[o.store]}${o.color ? ` · ${esc(o.color)}` : ""}</div><a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.name)}</a><div class="muted">${status}</div></div>
           <strong>${s?.price ? s.price + " €" : ""}</strong></div>`;
       }).join("")}
       <div class="row" style="margin:8px 0 0"><span class="muted">${Object.values(live).some(Boolean) ? "Päivitetty " + new Date().toLocaleTimeString("fi-FI") : ""}</span><span>${w.product ? "" : `<button class="ghost" id="rm-${w.id}" onclick="rematchWatch('${w.id}')">Etsi muista kaupoista</button> `}<button class="ghost" onclick="removeWatch('${w.id}')">Poista</button></span></div>

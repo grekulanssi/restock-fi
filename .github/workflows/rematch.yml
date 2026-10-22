@@ -1,0 +1,12 @@
+name: Hae seurannat uudelleen
+# Kerran yössä: omat seurannat haetaan uudelleen kaikista kaupoista, ja uudet kaupat lisätään seurantaan (api/rematch.js).
+on:
+  schedule:
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+jobs:
+  rematch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: curl -sS --fail-with-body --max-time 320 -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" https://restock-fi.vercel.app/api/rematch

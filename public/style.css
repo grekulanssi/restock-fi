@@ -19,6 +19,7 @@ label.hit:has(input:checked) { background:var(--sel); }
 label.hit img, .offer img { width:48px; height:48px; object-fit:contain; background:#fff; border-radius:6px; }
 .follow { display:grid; grid-template-columns:1fr 130px auto; gap:8px; margin-top:14px; }
 @media (max-width:560px) { .follow { grid-template-columns:1fr; } }
+label.check { display:flex; gap:8px; align-items:center; margin-top:10px; cursor:pointer; }
 .watch h3 { margin:0; font-size:17px; }
 .offer { display:grid; grid-template-columns:48px 1fr auto; gap:10px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
 .offer:first-of-type { border-top:0; }

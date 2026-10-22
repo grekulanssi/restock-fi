@@ -3,6 +3,7 @@ import { CATALOG, bySlug } from "../lib/catalog.js";
 import { read, write } from "../lib/db.js";
 import { notify, hasChannel } from "../lib/notify.js";
 import { hitsFor } from "../lib/geo.js";
+import { colorOf } from "../lib/match.js";
 
 // GitHub Actions kutsuu tätä ajastetusti. Tarkistaa katalogin ja käyttäjien seuraamat tuotteet,
 // kirjaa täydennykset historiaan ja lähettää ilmoitukset (Web Push ja halutessa sähköposti).
@@ -25,6 +26,7 @@ export default async function handler(req, res) {
   const sent = [];
   for (const u of Object.values(users)) {
     for (const w of u.watches) {
+      const fresh = [];
       for (const o of w.offers) {
         const key = `${o.store}:${o.id}`, now = checked[key];
         if (!now || now.error) continue;
@@ -32,11 +34,17 @@ export default async function handler(req, res) {
         const hits = hitsFor(now, u);
         const hit = hits.length > 0 && (!w.maxPrice || now.price <= w.maxPrice);
         const hitKey = `${key}:${w.maxPrice || ""}:${u.coords || ""}:${u.radiusKm || ""}`;
-        if (hit && !state.hits?.[hitKey] && hasChannel(u)) {
-          await notify(u, `${now.name} saatavilla: ${STORES[o.store].name}`, `${now.price} € · ${hits.slice(0, 3).map((h) => h.label).join(" · ")}`, now.url);
-          sent.push(hitKey);
-        }
+        if (hit && !state.hits?.[hitKey] && hasChannel(u)) fresh.push({ o, now, hits, hitKey });
         (state.hits ||= {})[hitKey] = hit;
+      }
+      // Mikä tahansa väri: yksi ilmoitus seurantaa kohden, otsikossa väri ja kauppa ("iPhone Duo 256 Gt yötaivas, Telia").
+      const where = (f) => [f.o.color || colorOf(f.now), STORES[f.o.store].name].filter(Boolean).join(", ");
+      for (const [f, ...rest] of w.anyColor ? (fresh.length ? [fresh] : []) : fresh.map((x) => [x])) {
+        const places = f.hits.slice(0, 3).map((h) => h.label).join(" · ");
+        const also = rest.length ? ` · myös ${rest.slice(0, 3).map(where).join("; ")}${rest.length > 3 ? " …" : ""}` : "";
+        if (w.anyColor) await notify(u, `${w.name} ${where(f)}`, `Saatavilla ${f.now.price} € · ${places}${also}`, f.now.url);
+        else await notify(u, `${f.now.name} saatavilla: ${STORES[f.o.store].name}`, `${f.now.price} € · ${places}`, f.now.url);
+        sent.push(f.hitKey, ...rest.map((x) => x.hitKey));
       }
     }
   }
