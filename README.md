@@ -22,7 +22,7 @@ Live: https://restock-fi.vercel.app
 
 | Tiedosto | Tehtävä |
 |---|---|
-| `lib/stores.js` | Kauppakohtainen haku ja saldotarkistus. Jokainen palauttaa `web` (verkkokauppa) ja `shops` (myymälät). Haku: VK, Power, Prisma, Veikon Kone (Klevu-haku, id = EAN, verkkosaatavuus tuotesivun `stockStatusData`-kentästä, koska Klevun `low_stock` kattaa myös ennakkomyynnin). Ilman omaa hakua (yhdistäminen tai katalogi): Telia (`<slug>~<variantti>`), Elisa (`<slug>~<laitenumero>`), DNA (`<slug>~<Applen tuotekoodi>`, GraphQL persisted query, hash voi vanhentua), C&C (`<slug>`), Kärkkäinen (`<slug>~<partNumber>`, HCL Commerce REST), Multitronic (tuotenumero) |
+| `lib/stores.js` | Kauppakohtainen haku ja saldotarkistus. Jokainen palauttaa `web` (verkkokauppa) ja `shops` (myymälät). Haku: VK, Power, Prisma, Veikon Kone (Klevu-haku, id = EAN, verkkosaatavuus tuotesivun `stockStatusData`-kentästä, koska Klevun `low_stock` kattaa myös ennakkomyynnin, ja myymäläkohtaiset saldot tuotesivun `clickAndCollectData`-kentästä). Ilman omaa hakua (yhdistäminen tai katalogi): Telia (`<slug>~<variantti>`), Elisa (`<slug>~<laitenumero>`), DNA (`<slug>~<Applen tuotekoodi>`, GraphQL persisted query, hash voi vanhentua), C&C (`<slug>`), Kärkkäinen (`<slug>~<partNumber>`, HCL Commerce REST), Multitronic (tuotenumero) |
 | `lib/geo.js`, `lib/postcodes.json` | Sijainnit, etäisyydet ja säderajaus |
 | `lib/catalog.js` | Rekisterin siemen: katalogituotteet ja niiden kauppakohtaiset tuotenumerot |
 | `lib/products.js` | Tuoterekisteri: tunnistus, uuden tuotteen luonti, tarjousten lisäys ja seuraajamäärät |
@@ -64,4 +64,4 @@ vercel --prod   # julkaisu
 
 - Gigantti (Vercel Security Checkpoint), Tector, Proshop ja Jimms estävät automaattiset haut. Niitä ei kierretä. Luvallinen reitti on affiliate-feed tai kaupan oma rajapinta.
 - Täydennyshistoria on vain niin tarkka kuin tarkistusväli (2 min). Jos GitHub ei käynnistä uutta ajoa ennen kuin edellinen päättyy (6 h), väliin voi jäädä katko.
-- Teliasta ja Veikon Koneesta saadaan vain myymälöiden yhteinen tila (kyllä/ei), joten säde ei rajaa niiden myymälöitä. Elisa, DNA ja C&C kertovat tilan (saatavilla/ei) mutta eivät kappalemäärää.
+- Teliasta saadaan vain myymälöiden yhteinen tila (kyllä/ei), joten säde ei rajaa sen myymälöitä. Elisa, DNA ja C&C kertovat tilan (saatavilla/ei) mutta eivät kappalemäärää.
