@@ -141,7 +141,9 @@ window.removeWatch = async function (id) {
 
 // Live-tarkistus, kun sivu on auki. Tuotteen tiedot ja kaupat tulevat palvelimelta (data.products).
 const offersOf = (w) => data.products[w.product]?.offers || [];
-const hit = (w, o) => (o?.near ? o.near.length > 0 : o?.available) && (!w.maxPrice || o.price <= w.maxPrice);
+// Outlet-kappale käy, jos se on verkossa tai säteellä ja sen oma hinta on rajan alla.
+const outletHit = (w, o) => (o?.outletNear || []).some((x) => !w.maxPrice || x.price <= w.maxPrice);
+const hit = (w, o) => ((o?.near ? o.near.length > 0 : o?.available) && (!w.maxPrice || o.price <= w.maxPrice)) || outletHit(w, o);
 
 async function checkAll() {
   const offers = new Map(data.watches.flatMap((w) => offersOf(w).map((o) => [`${o.store}:${o.id}`, o])));
@@ -176,8 +178,9 @@ function renderWatches() {
         const status = !s ? "Tarkistetaan…" : s.error ? `Virhe: ${esc(s.error)}` :
           s.near.length ? `<span class="ok">Saatavilla</span> · ${esc(s.near.slice(0, 3).join(" · "))}${s.near.length > 3 ? ` (+${s.near.length - 3})` : ""}`
           : `<span class="no">${s.available && data.radiusKm ? "Ei säteellä" : "Loppu"}</span> · ${esc(s.detail)}`;
+        const outlet = s?.outletNear?.length ? `<div class="muted"><span class="ok">${esc(s.outletNear.slice(0, 2).map((x) => x.label).join(" · "))}</span>${s.outletNear.length > 2 ? ` (+${s.outletNear.length - 2})` : ""}</div>` : "";
         return `<div class="offer"><img src="${esc(s?.image || "")}" alt="" loading="lazy">
-          <div><div class="muted">${STORE_NAMES[o.store]}${o.color ? ` · ${esc(o.color)}` : ""}</div><a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.name)}</a><div class="muted">${status}</div></div>
+          <div><div class="muted">${STORE_NAMES[o.store]}${o.color ? ` · ${esc(o.color)}` : ""}</div><a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.name)}</a><div class="muted">${status}</div>${outlet}</div>
           <strong>${s?.price ? s.price + " €" : ""}</strong></div>`;
       }).join("")}
       <div class="row" style="margin:8px 0 0"><span class="muted">${Object.values(live).some(Boolean) ? "Päivitetty " + new Date().toLocaleTimeString("fi-FI") : ""}</span><span><button class="ghost" id="rm-${w.id}" onclick="rematchWatch('${w.id}')">Etsi muista kaupoista</button> <button class="ghost" onclick="removeWatch('${w.id}')">Poista</button></span></div>

@@ -1,5 +1,6 @@
 import { loadAll, summarize } from "../lib/summary.js";
 import { loadProducts, publicProduct } from "../lib/products.js";
+import { outletLabel } from "../lib/geo.js";
 
 // Julkinen tuotesivu /tuote/<slug> jokaiselle rekisterin tuotteelle. Renderöidään palvelimella, jotta sivu näkyy hakukoneissa.
 // Sivulla on vain kauppojen data ja seuraajamäärä, ei mitään käyttäjäkohtaista.
@@ -59,7 +60,7 @@ export default async function handler(req, res) {
   <a class="back" href="/">← Kaikki tuotteet</a>
   <div class="row" style="margin-top:12px">
     <div><div class="muted">${esc(p.category || (p.anyColor ? "Mikä tahansa väri" : ""))}</div><h1>${esc(p.name)}</h1></div>
-    <span class="${s.available ? "ok" : "no"}">${s.available ? "Saatavilla nyt" : "Ei saatavilla"}</span>
+    <span class="${s.available || s.outlet ? "ok" : "no"}">${s.available ? "Saatavilla nyt" : s.outlet ? "Outletissa" : "Ei saatavilla"}</span>
   </div>
   <p class="lead">${esc(lead)}</p>
 
@@ -84,6 +85,7 @@ export default async function handler(req, res) {
       <img src="${esc(o.image || "")}" alt="" loading="lazy">
       <div><a href="${esc(o.url)}" target="_blank" rel="noopener"><strong>${esc(o.storeName)}</strong></a>${o.color ? ` <span class="muted">${esc(o.color)}</span>` : ""}
         <div class="muted"><span class="${o.available ? "ok" : "no"}">${o.available ? "Saatavilla" : "Loppu"}</span>${o.detail ? " · " + esc(o.detail) : ""}</div>
+        ${(o.outlet || []).map((x) => `<div class="muted"><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(outletLabel(x))}</a> · ${esc(x.web ? "verkko-outlet" : x.name)}</div>`).join("")}
         <div class="muted">${o.lastRestock ? `Viimeksi varastossa ${ago(o.lastRestock.start)}` : "Ei havaittuja täydennyksiä"}</div></div>
       <strong>${eur(o.price)}</strong>
     </div>`).join("")}

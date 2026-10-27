@@ -2,7 +2,7 @@ import { STORES } from "../lib/stores.js";
 import { read, write } from "../lib/db.js";
 import { loadProducts, watcherCounts } from "../lib/products.js";
 import { notify, hasChannel } from "../lib/notify.js";
-import { hitsFor } from "../lib/geo.js";
+import { hitsFor, outletHitsFor } from "../lib/geo.js";
 import { colorOf } from "../lib/match.js";
 
 // GitHub Actions kutsuu tätä ajastetusti. Tarkistaa katalogin ja seurattujen tuotteiden tarjoukset rekisteristä,
@@ -32,27 +32,38 @@ export default async function handler(req, res) {
       for (const o of p.offers) {
         const key = `${o.store}:${o.id}`, now = checked[key];
         const hitKey = `${uk}:${key}:${w.maxPrice || ""}:${u.coords || ""}:${u.radiusKm || ""}`;
-        if (!now || now.error) { if (state.hits?.[hitKey]) hitsNow[hitKey] = true; continue; }
+        if (!now || now.error) { for (const k of [hitKey, `${hitKey}:outlet`]) if (state.hits?.[k]) hitsNow[k] = true; continue; }
         // Saatavilla käyttäjälle = verkossa tai säteen sisällä olevassa myymälässä, ja hinta rajan alla.
         const hits = hitsFor(now, u);
         const hit = hits.length > 0 && (!w.maxPrice || now.price <= w.maxPrice);
         if (hit && !state.hits?.[hitKey] && hasChannel(u)) fresh.push({ o, now, hits, hitKey });
         if (hit) hitsNow[hitKey] = true;
+        // Outlet-kappaleet hälyttävät erikseen omalla ilmoitustilallaan. Jos outletin haku epäonnistui (null), tila säilyy.
+        const outletKey = `${hitKey}:outlet`;
+        if (now.outlet === null) { if (state.hits?.[outletKey]) hitsNow[outletKey] = true; continue; }
+        const outletHits = outletHitsFor(now, u, w.maxPrice);
+        if (outletHits.length && !state.hits?.[outletKey] && hasChannel(u)) fresh.push({ o, now, hits: outletHits, hitKey: outletKey, outlet: true });
+        if (outletHits.length) hitsNow[outletKey] = true;
       }
       // Mikä tahansa väri: yksi ilmoitus seurantaa kohden, otsikossa väri ja kauppa ("iPhone Duo 256 Gt yötaivas, Telia").
-      const where = (f) => [f.o.color || colorOf(f.now), STORES[f.o.store].name].filter(Boolean).join(", ");
+      // Outlet-osumassa hinta on jo osuman tekstissä ("Outlet 549 € (avattu pakkaus), verkko-outlet").
+      const where = (f) => [f.o.color || colorOf(f.now), STORES[f.o.store].name + (f.outlet ? " outlet" : "")].filter(Boolean).join(", ");
+      const tag = (f) => `${p.slug} ${f.o.store}:${f.o.id}${f.outlet ? " outlet" : ""}`;
       for (const [f, ...rest] of p.anyColor ? (fresh.length ? [fresh] : []) : fresh.map((x) => [x])) {
         const places = f.hits.slice(0, 3).map((h) => h.label).join(" · ");
+        const url = f.outlet ? f.hits[0].url || f.now.url : f.now.url;
         const also = rest.length ? ` · myös ${rest.slice(0, 3).map(where).join("; ")}${rest.length > 3 ? " …" : ""}` : "";
-        if (p.anyColor) await notify(u, `${p.name} ${where(f)}`, `Saatavilla ${f.now.price} € · ${places}${also}`, f.now.url);
+        if (p.anyColor) await notify(u, `${p.name} ${where(f)}`, `${f.outlet ? "Outletissa" : `Saatavilla ${f.now.price} €`} · ${places}${also}`, url);
+        else if (f.outlet) await notify(u, `${f.now.name} outletissa: ${STORES[f.o.store].name}`, places, url);
         else await notify(u, `${f.now.name} saatavilla: ${STORES[f.o.store].name}`, `${f.now.price} € · ${places}`, f.now.url);
-        sent.push(`${p.slug} ${f.o.store}:${f.o.id}`, ...rest.map((x) => `${p.slug} ${x.o.store}:${x.o.id}`));
+        sent.push(tag(f), ...rest.map(tag));
       }
     }
   }
   state.hits = hitsNow;
 
   // Täydennyshistoria: loppu -> saatavilla avaa tapahtuman, saatavilla -> loppu sulkee sen.
+  // available koskee vain normaalia tuotetta, joten outlet-kappaleet eivät näy täydennyksinä.
   const at = new Date().toISOString();
   let eventsChanged = false;
   for (const [key, now] of Object.entries(checked)) {
@@ -74,8 +85,10 @@ export default async function handler(req, res) {
   for (const [k, v] of Object.entries(checked)) {
     if (v.error) continue;
     const old = state.offers?.[k];
-    if (!old || old.available !== v.available || old.price !== v.price || old.image !== v.image) {
-      (state.offers ||= {})[k] = { name: v.name, url: v.url, image: v.image, available: v.available, price: v.price, detail: v.detail, changedAt: at };
+    // Outlet-kappaleet tallennetaan tuotesivua varten (hinta, kunto, sijainti). Epäonnistunut outlet-haku ei muuta tilaa.
+    const outlet = v.outlet === null ? old?.outlet : v.outlet?.length ? v.outlet : undefined;
+    if (!old || old.available !== v.available || old.price !== v.price || old.image !== v.image || JSON.stringify(old.outlet) !== JSON.stringify(outlet)) {
+      (state.offers ||= {})[k] = { name: v.name, url: v.url, image: v.image, available: v.available, price: v.price, detail: v.detail, outlet, changedAt: at };
     }
   }
   const changed = JSON.stringify(state) !== before;
